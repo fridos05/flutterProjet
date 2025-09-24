@@ -7,15 +7,15 @@ class SampleData {
   // Togolese Users
   static final List<User> users = [
     // Parents
-    const User(
+    const Parent(
       id: 'parent_1',
       name: 'M. Kofi Mensah',
       email: 'kofi.mensah@gmail.com',
-      role: UserRole.parent,
       phone: '+228 90 12 34 56',
       address: 'Quartier Kodjoviakopé',
       city: 'Lomé',
       avatar: 'https://pixabay.com/get/gc65d2b6be33c7288005c78ccaf397f528c896a9baec1a6cd3ff66b75932348a7b3a407eb36ee870591520e7cb3b48d46348829abd8d395786f10b18252eed310_1280.jpg',
+      childrenIds: ['student_1', 'student_2'],
     ),
     
     // Teachers
@@ -54,6 +54,7 @@ class SampleData {
       phone: '+228 90 45 67 89',
       address: 'Quartier Tokoin',
       city: 'Lomé',
+      avatar: 'https://i.pravatar.cc/150?u=afi.ablode', // Added a placeholder avatar
       subjects: ['Anglais', 'Français'],
       hourlyRate: 7000,
       experience: 6,
@@ -94,6 +95,7 @@ class SampleData {
       phone: '+228 90 56 78 90',
       address: 'Quartier Adidogomé',
       city: 'Lomé',
+      avatar: 'https://i.pravatar.cc/150?u=efua.koudjo', // Added a placeholder avatar
     ),
   ];
 

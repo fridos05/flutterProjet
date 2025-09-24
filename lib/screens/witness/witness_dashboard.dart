@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:edumanager/data/sample_data.dart';
 import 'package:edumanager/models/user.dart';
-import 'package:edumanager/models/course.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
 
@@ -493,7 +492,7 @@ class _WitnessDashboardState extends State<WitnessDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Actions rapides',
+          '',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -509,29 +508,7 @@ class _WitnessDashboardState extends State<WitnessDashboard> {
                 },
                 backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                 child: Column(
-                  children: [
-                    Icon(
-                      Icons.history,
-                      color: theme.colorScheme.primary,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Historique complet',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    Text(
-                      'Toutes les validations',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.8),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                  
                 ),
               ),
             ),
@@ -551,7 +528,7 @@ class _WitnessDashboardState extends State<WitnessDashboard> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Rapport mensuel',
+                      '',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.secondary,

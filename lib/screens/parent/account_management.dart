@@ -236,7 +236,7 @@ class _UserManagementCard extends StatelessWidget {
     final theme = Theme.of(context);
     
     return CustomCard(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: Column(
         children: [
           Row(
@@ -246,7 +246,7 @@ class _UserManagementCard extends StatelessWidget {
                 size: 60,
                 showStatus: true,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,29 +308,29 @@ class _UserManagementCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onViewDetails,
-                  icon: const Icon(Icons.visibility, size: 18),
+                  icon: const Icon(Icons.visibility, size: 14),
                   label: const Text('Détails'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.primary,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit, size: 18),
+                  icon: const Icon(Icons.edit, size: 10),
                   label: const Text('Modifier'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.secondary,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete, size: 18),
+                  icon: const Icon(Icons.delete, size: 10),
                   label: const Text('Supprimer'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
@@ -386,7 +386,7 @@ class _AddUserBottomSheetState extends State<_AddUserBottomSheet> {
           left: 16,
           right: 16,
           top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 12,
         ),
         child: Column(
           children: [
@@ -398,7 +398,7 @@ class _AddUserBottomSheetState extends State<_AddUserBottomSheet> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               'Ajouter un utilisateur',
               style: theme.textTheme.titleLarge?.copyWith(

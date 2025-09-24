@@ -1,10 +1,16 @@
-import 'package:flutter/material.dart';
 import 'package:edumanager/models/user.dart';
+import 'package:edumanager/screens/admin/incidentscreen.dart';
+import 'package:flutter/material.dart';
 import 'package:edumanager/models/admin_models.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 import 'package:edumanager/widgets/common/user_avatar.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
+import 'package:edumanager/screens/admin/usermanagementscreen.dart';
 
+// 🔴 VÉRIFIE LE NOM EXACT DE TON FICHIER D'INCIDENT
+// Exemples possibles :
+// import 'package:edumanager/screens/admin/incident_admin_screen.dart';
+// import 'package:edumanager/screens/admin/incident_screen.dart';
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -25,12 +31,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      _DashboardOverview(currentUser: _currentUser),
-      _UsersManagement(),
-      _QualityControl(),
-      _IncidentsManagement(),
-      _SystemLogs(),
-    ];
+  _DashboardOverview(currentUser: _currentUser), // index 0
+  const UserManagementScreen(),                  // index 1
+  const IncidentAdminScreen(),                   // index 2
+];
+
+    // 🔒 Sécurité : évite les index invalides
+    if (_selectedIndex < 0 || _selectedIndex >= pages.length) {
+      _selectedIndex = 0;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -158,72 +167,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 _AdminDrawerItem(
-                  icon: Icons.people_outline,
-                  title: 'Gestion des utilisateurs',
+                  icon: Icons.report_problem_outlined,
+                  title: 'Gestion des incidents',
                   isSelected: _selectedIndex == 1,
                   onTap: () {
                     setState(() => _selectedIndex = 1);
                     Navigator.pop(context);
                   },
                 ),
-                _AdminDrawerItem(
-                  icon: Icons.verified_outlined,
-                  title: 'Contrôle qualité',
-                  isSelected: _selectedIndex == 2,
-                  onTap: () {
-                    setState(() => _selectedIndex = 2);
-                    Navigator.pop(context);
-                  },
-                ),
-                _AdminDrawerItem(
-                  icon: Icons.report_problem_outlined,
-                  title: 'Gestion des incidents',
-                  isSelected: _selectedIndex == 3,
-                  onTap: () {
-                    setState(() => _selectedIndex = 3);
-                    Navigator.pop(context);
-                  },
-                ),
-                _AdminDrawerItem(
-                  icon: Icons.history_outlined,
-                  title: 'Journaux système',
-                  isSelected: _selectedIndex == 4,
-                  onTap: () {
-                    setState(() => _selectedIndex = 4);
-                    Navigator.pop(context);
-                  },
-                ),
                 const Divider(),
                 _AdminDrawerItem(
-                  icon: Icons.analytics_outlined,
-                  title: 'Rapports avancés',
+                  icon: Icons.logout_outlined,
+                  title: 'Déconnexion',
                   onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to advanced reports
-                  },
-                ),
-                _AdminDrawerItem(
-                  icon: Icons.backup_outlined,
-                  title: 'Sauvegarde système',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to backup
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false,
+                    );
                   },
                 ),
               ],
             ),
-          ),
-          const Divider(),
-          _AdminDrawerItem(
-            icon: Icons.logout_outlined,
-            title: 'Déconnexion',
-            onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
-            },
           ),
           const SizedBox(height: 16),
         ],
@@ -232,14 +197,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _showSystemAlerts(BuildContext context) {
-    // Afficher les alertes système
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Aucune alerte système critique')),
     );
   }
 
   void _showSystemSettings(BuildContext context) {
-    // Afficher les paramètres système
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -255,6 +218,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 }
+
+// =============== WIDGETS RÉUTILISABLES ===============
 
 class _AdminDrawerItem extends StatelessWidget {
   final IconData icon;
@@ -313,7 +278,6 @@ class _DashboardOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    // Simulation des statistiques
     final stats = AdminDashboardStats(
       totalUsers: 156,
       totalParents: 45,
@@ -335,7 +299,6 @@ class _DashboardOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête de bienvenue
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -386,12 +349,9 @@ class _DashboardOverview extends StatelessWidget {
           
           const SizedBox(height: 24),
           
-          // Statistiques utilisateurs
           Text(
             'Utilisateurs de la plateforme',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           
@@ -436,12 +396,9 @@ class _DashboardOverview extends StatelessWidget {
           
           const SizedBox(height: 32),
           
-          // Statistiques financières
           Text(
             'Aperçu financier',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           
@@ -471,12 +428,9 @@ class _DashboardOverview extends StatelessWidget {
           
           const SizedBox(height: 32),
           
-          // Qualité et incidents
           Text(
             'Qualité et incidents',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           
@@ -506,12 +460,9 @@ class _DashboardOverview extends StatelessWidget {
           
           const SizedBox(height: 24),
           
-          // Actions rapides
           Text(
             'Actions rapides',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           
@@ -526,35 +477,27 @@ class _DashboardOverview extends StatelessWidget {
               _AdminActionCard(
                 icon: Icons.person_add,
                 title: 'Nouvel utilisateur',
-                onTap: () {
-                  // Action pour créer un utilisateur
-                },
+                onTap: () {},
               ),
               _AdminActionCard(
                 icon: Icons.backup,
                 title: 'Sauvegarde',
-                onTap: () {
-                  // Action pour lancer une sauvegarde
-                },
+                onTap: () {},
               ),
               _AdminActionCard(
                 icon: Icons.analytics,
                 title: 'Rapport mensuel',
-                onTap: () {
-                  // Action pour générer un rapport
-                },
+                onTap: () {},
               ),
               _AdminActionCard(
                 icon: Icons.announcement,
                 title: 'Annonce globale',
-                onTap: () {
-                  // Action pour créer une annonce
-                },
+                onTap: () {},
               ),
             ],
           ),
           
-          const SizedBox(height: 16), // Reduced from default
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -706,43 +649,6 @@ class _AdminActionCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// Placeholders pour les autres sections
-class _UsersManagement extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Gestion des utilisateurs\n(À implémenter)'),
-    );
-  }
-}
-
-class _QualityControl extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Contrôle qualité\n(À implémenter)'),
-    );
-  }
-}
-
-class _IncidentsManagement extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Gestion des incidents\n(À implémenter)'),
-    );
-  }
-}
-
-class _SystemLogs extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Journaux système\n(À implémenter)'),
     );
   }
 }

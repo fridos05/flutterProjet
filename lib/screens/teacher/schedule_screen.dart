@@ -311,7 +311,7 @@ class _WeeklyView extends StatelessWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
           
           // Add Course Button
           Center(
@@ -671,7 +671,7 @@ class _AddCourseDialogState extends State<_AddCourseDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedSubject,
+              initialValue: _selectedSubject,
               decoration: const InputDecoration(
                 labelText: 'Matière',
                 border: OutlineInputBorder(),
@@ -686,7 +686,7 @@ class _AddCourseDialogState extends State<_AddCourseDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedStudent,
+              initialValue: _selectedStudent,
               decoration: const InputDecoration(
                 labelText: 'Élève',
                 border: OutlineInputBorder(),

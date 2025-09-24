@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/data/sample_data.dart';
 import 'package:edumanager/models/user.dart';
-import 'package:edumanager/models/course.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -721,7 +719,7 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
   final _contentController = TextEditingController();
   String _selectedStudent = 'Ama Adjovi';
   String _selectedSubject = 'Mathématiques';
-  _ReportType _selectedType = _ReportType.session;
+  final _ReportType _selectedType = _ReportType.session;
 
   @override
   Widget build(BuildContext context) {
@@ -742,7 +740,7 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedStudent,
+                initialValue: _selectedStudent,
                 decoration: const InputDecoration(
                   labelText: 'Élève',
                   border: OutlineInputBorder(),
@@ -757,7 +755,7 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedSubject,
+                initialValue: _selectedSubject,
                 decoration: const InputDecoration(
                   labelText: 'Matière',
                   border: OutlineInputBorder(),

@@ -10,6 +10,8 @@ import 'package:edumanager/screens/parent/account_management.dart';
 import 'package:edumanager/screens/parent/statistics_payments.dart';
 import 'package:edumanager/screens/parent/rescheduling_screen.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
+import 'package:edumanager/screens/parent/parametre.dart';
+
 
 class ParentDashboard extends StatefulWidget {
   const ParentDashboard({super.key});
@@ -29,6 +31,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
       const AccountManagementScreen(),
       const StatisticsPaymentsScreen(),
       const ReschedulingScreen(),
+      const SettingsScreen(),
     ];
 
     return Scaffold(
@@ -152,8 +155,11 @@ class _ParentDashboardState extends State<ParentDashboard> {
                 const Divider(),
                 _DrawerItem(
                   icon: Icons.settings_outlined,
-                  title: 'Paramètres',
+                  title: 'Parametres',
+                  isSelected: _selectedIndex == 4,
+
                   onTap: () {
+                    setState(() => _selectedIndex = 4);
                     Navigator.pop(context);
                     // Navigate to settings
                   },
@@ -462,7 +468,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
             .where((course) => course.startTime.isAfter(DateTime.now()))
             .take(3)
             .map((course) => _CourseCard(course: course))
-            .toList(),
+            ,
           
           const SizedBox(height: 24),
           
@@ -489,7 +495,7 @@ class _DashboardHomeState extends State<_DashboardHome> {
           ...SampleData.notifications
             .take(3)
             .map((notification) => _NotificationTile(notification: notification))
-            .toList(),
+            ,
         ],
       ),
     );

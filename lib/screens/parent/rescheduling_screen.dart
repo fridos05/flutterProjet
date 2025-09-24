@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:edumanager/data/sample_data.dart';
 import 'package:edumanager/models/course.dart';
-import 'package:edumanager/models/user.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 
 class ReschedulingScreen extends StatefulWidget {
@@ -774,7 +773,7 @@ class _AddCourseDialogState extends State<_AddCourseDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedSubject,
+            initialValue: _selectedSubject,
             decoration: const InputDecoration(
               labelText: 'Matière',
               border: OutlineInputBorder(),

@@ -53,7 +53,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+                color: theme.colorScheme.shadow.withOpacity(0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -88,7 +88,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                         Text(
                           '${teacherStudents.length} élève${teacherStudents.length > 1 ? 's' : ''} en cours',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -115,7 +115,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -161,19 +161,19 @@ class _StudentsScreenState extends State<StudentsScreen> {
           Icon(
             Icons.search_off,
             size: 64,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            color: theme.colorScheme.onSurface.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'Aucun élève trouvé',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           Text(
             'Essayez de modifier votre recherche',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              color: theme.colorScheme.onSurface.withOpacity(0.5),
             ),
           ),
         ],
@@ -261,13 +261,13 @@ class _StudentCard extends StatelessWidget {
                     Text(
                       student.school,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                     Text(
                       student.city ?? 'Lomé',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -328,7 +328,7 @@ class _StudentCard extends StatelessWidget {
                   Text(
                     '$completedCourses/$totalCourses cours',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -351,7 +351,7 @@ class _StudentCard extends StatelessWidget {
             children: student.subjects.map((subject) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+                color: theme.colorScheme.tertiaryContainer.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -382,6 +382,12 @@ class _StudentProfileScreen extends StatelessWidget {
         .where((c) => c.studentId == student.id && c.teacherId == teacher.id)
         .toList();
     
+    // Récupérer les cours à venir pour les rappels
+    final upcomingCourses = courses
+        .where((c) => c.startTime.isAfter(DateTime.now()))
+        .take(3) // Limiter à 3 rappels
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(student.name),
@@ -397,12 +403,12 @@ class _StudentProfileScreen extends StatelessWidget {
             itemBuilder: (context) => [
               PopupMenuItem(
                 child: ListTile(
-                  leading: const Icon(Icons.assessment),
-                  title: const Text('Créer rapport'),
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Gérer les rappels'),
                   contentPadding: EdgeInsets.zero,
                   onTap: () {
                     Navigator.pop(context);
-                    // Navigate to create report
+                    // Navigate to manage reminders
                   },
                 ),
               ),
@@ -448,13 +454,13 @@ class _StudentProfileScreen extends StatelessWidget {
                   Text(
                     student.school,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                   Text(
                     student.city ?? 'Lomé',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -512,6 +518,32 @@ class _StudentProfileScreen extends StatelessWidget {
             
             const SizedBox(height: 24),
             
+            // Rappels de cours (remplace la section rapport)
+            if (upcomingCourses.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Rappels de cours',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // Show all reminders
+                    },
+                    child: const Text('Voir tout'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              ...upcomingCourses.map((course) => _ReminderCard(course: course)),
+              
+              const SizedBox(height: 16),
+            ],
+            
             // Recent Courses
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -532,7 +564,10 @@ class _StudentProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             
-            ...courses.take(5).map((course) => _CourseHistoryItem(course: course)),
+            ...courses
+                .where((c) => c.startTime.isBefore(DateTime.now()))
+                .take(3)
+                .map((course) => _CourseHistoryItem(course: course)),
             
             const SizedBox(height: 24),
             
@@ -550,10 +585,10 @@ class _StudentProfileScreen extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Create report
+                      // Set reminder
                     },
-                    icon: const Icon(Icons.assessment),
-                    label: const Text('Créer rapport'),
+                    icon: const Icon(Icons.notifications),
+                    label: const Text('Rappel'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,
@@ -568,7 +603,7 @@ class _StudentProfileScreen extends StatelessWidget {
                       // Send message
                     },
                     icon: const Icon(Icons.message),
-                    label: const Text('Contacter parent'),
+                    label: const Text('Message'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -601,7 +636,7 @@ class _StatCard extends StatelessWidget {
     final theme = Theme.of(context);
     
     return CustomCard(
-      backgroundColor: color.withValues(alpha: 0.1),
+      backgroundColor: color.withOpacity(0.1),
       child: Column(
         children: [
           Icon(
@@ -620,9 +655,129 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: color.withValues(alpha: 0.8),
+              color: color.withOpacity(0.8),
             ),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderCard extends StatelessWidget {
+  final Course course;
+
+  const _ReminderCard({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final difference = course.startTime.difference(now);
+    final daysUntil = difference.inDays;
+    final hoursUntil = difference.inHours.remainder(24);
+
+    String timeRemaining;
+    if (daysUntil > 0) {
+      timeRemaining = 'Dans $daysUntil jour${daysUntil > 1 ? 's' : ''}';
+    } else if (hoursUntil > 0) {
+      timeRemaining = 'Dans $hoursUntil heure${hoursUntil > 1 ? 's' : ''}';
+    } else {
+      timeRemaining = 'Bientôt';
+    }
+
+    return CustomCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      backgroundColor: theme.colorScheme.primaryContainer.withOpacity(0.1),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 60,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      course.subject,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        timeRemaining,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${course.startTime.day}/${course.startTime.month}/${course.startTime.year}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      course.timeString,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_active,
+                        color: theme.colorScheme.primary,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        // Configure reminder
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -643,8 +798,8 @@ class _CourseHistoryItem extends StatelessWidget {
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 8),
       backgroundColor: isPast 
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-        : theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.5)
+        : theme.colorScheme.primaryContainer.withOpacity(0.3),
       child: Row(
         children: [
           Container(
@@ -672,7 +827,7 @@ class _CourseHistoryItem extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(course.status).withValues(alpha: 0.1),
+                        color: _getStatusColor(course.status).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -691,13 +846,13 @@ class _CourseHistoryItem extends StatelessWidget {
                     Icon(
                       Icons.access_time,
                       size: 14,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${course.startTime.day}/${course.startTime.month} ${course.timeString}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),
                     const Spacer(),
@@ -727,7 +882,7 @@ class _CourseHistoryItem extends StatelessWidget {
       case CourseStatus.cancelled:
         return Colors.red;
       case CourseStatus.rescheduled:
-        return Colors.orange;
+        return const Color.fromARGB(255, 5, 103, 249);
       case CourseStatus.inProgress:
         return Colors.purple;
     }

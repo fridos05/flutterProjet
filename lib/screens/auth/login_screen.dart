@@ -21,6 +21,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -56,6 +60,40 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Validation des champs
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'L\'email est requis';
+    }
+    if (!value.contains('@')) {
+      return 'Format d\'email invalide';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Le mot de passe est requis';
+    }
+    if (value.length < 3) {
+      return 'Le mot de passe doit contenir au moins 3 caractères';
+    }
+    return null;
+  }
+
+  void _handleLogin() {
+    // Vérifie si le formulaire est valide
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      
+      // Simulation de chargement
+      Future.delayed(const Duration(seconds: 2), () {
+        setState(() => _isLoading = false);
+        _navigateToRole(UserRole.parent); // Par défaut vers parent
+      });
+    }
   }
 
   void _navigateToRole(UserRole role) {
@@ -103,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             colors: [
               theme.colorScheme.primary,
               theme.colorScheme.secondary,
-              theme.colorScheme.tertiary.withValues(alpha: 0.8),
+              theme.colorScheme.tertiary.withOpacity(0.8),
             ],
           ),
         ),
@@ -118,16 +156,16 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Ajout d'espace en haut pour centrer quand possible
                     SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+                    
                     // Logo et titre
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: Colors.white.withOpacity(0.2),
                           width: 1,
                         ),
                       ),
@@ -141,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               borderRadius: BorderRadius.circular(50),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
+                                  color: Colors.black.withOpacity(0.1),
                                   blurRadius: 20,
                                   offset: const Offset(0, 10),
                                 ),
@@ -165,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           Text(
                             'L\'éducation à portée de main',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Colors.white.withOpacity(0.9),
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -183,80 +221,116 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
+                            color: Colors.black.withOpacity(0.1),
                             blurRadius: 30,
                             offset: const Offset(0, 15),
                           ),
                         ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Connexion',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Connexion',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 32),
-                          
-                          TextFormField(
-                            controller: _emailController,
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined, color: theme.colorScheme.primary),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                            const SizedBox(height: 32),
+                            
+                            // Champ Email
+                            TextFormField(
+                              controller: _emailController,
+                              decoration: InputDecoration(
+                                labelText: 'Email *',
+                                prefixIcon: Icon(Icons.email_outlined, color: theme.colorScheme.primary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Colors.red),
+                                ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                              ),
+                              validator: _validateEmail,
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            decoration: InputDecoration(
-                              labelText: 'Mot de passe',
-                              prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.primary),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                            const SizedBox(height: 20),
+                            
+                            // Champ Mot de passe
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              decoration: InputDecoration(
+                                labelText: 'Mot de passe *',
+                                prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.primary),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                    color: theme.colorScheme.primary.withOpacity(0.6),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Colors.red),
+                                ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                              ),
+                              validator: _validatePassword,
                             ),
-                          ),
-                          const SizedBox(height: 32),
-                          
-                          ElevatedButton(
-                            onPressed: () => _navigateToRole(UserRole.parent),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                            const SizedBox(height: 32),
+                            
+                            // Bouton de connexion
+                            ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 3,
                               ),
-                              elevation: 3,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                                      ),
+                                    )
+                                  : Text(
+                                      'Se connecter',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
-                            child: Text(
-                              'Se connecter',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     
@@ -266,10 +340,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: Colors.white.withOpacity(0.2),
                           width: 1,
                         ),
                       ),
@@ -278,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           Text(
                             'Accès rapide démo',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Colors.white.withOpacity(0.9),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -308,7 +382,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       ),
                     ),
                     
-                    // Ajout d'espace en bas pour centrer quand possible
                     SizedBox(height: MediaQuery.of(context).size.height * 0.05),
                   ],
                 ),
@@ -329,7 +402,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
+        backgroundColor: Colors.white.withOpacity(0.9),
         foregroundColor: Theme.of(context).colorScheme.primary,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         shape: RoundedRectangleBorder(

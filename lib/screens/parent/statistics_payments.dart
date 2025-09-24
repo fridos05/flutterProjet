@@ -13,7 +13,6 @@ class StatisticsPaymentsScreen extends StatefulWidget {
 class _StatisticsPaymentsScreenState extends State<StatisticsPaymentsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isMonthlyView = true;
 
   @override
   void initState() {

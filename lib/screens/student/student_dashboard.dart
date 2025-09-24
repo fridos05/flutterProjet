@@ -469,7 +469,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final progress = total > 0 ? completed / total : 0.0;
     final color = _getSubjectColor(subject);
     
-    return Container(
+    return SizedBox(
       width: (MediaQuery.of(context).size.width - 44) / 2,
       child: CustomCard(
         backgroundColor: color.withValues(alpha: 0.1),
@@ -598,7 +598,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Actions rapides',
+          'Rappels des cours',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -613,30 +613,24 @@ class _StudentDashboardState extends State<StudentDashboard> {
           mainAxisSpacing: 16,
           childAspectRatio: 1.5,
           children: [
-            _buildActionCard(
-              Icons.calendar_month,
-              'Mon planning',
-              'Voir tous mes cours',
-              theme.colorScheme.primary,
-            ),
+            
             _buildActionCard(
               Icons.assignment,
               'Mes devoirs',
               'Travail à faire',
               theme.colorScheme.secondary,
             ),
-            _buildActionCard(
-              Icons.message,
-              'Messages',
-              'Contacter mes profs',
-              theme.colorScheme.tertiary,
+            Expanded(
+              child: _buildAchievementCard(
+                'Chimie',
+                'Cours à venir !',
+                'Dans 2 jours',
+                theme.colorScheme.primary,
+              ),
             ),
-            _buildActionCard(
-              Icons.help,
-              'Aide',
-              'Besoin d\'assistance',
-              Colors.orange,
-            ),
+            const SizedBox(width: 10),
+            
+            
           ],
         ),
       ],
