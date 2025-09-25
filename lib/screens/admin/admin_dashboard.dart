@@ -175,6 +175,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.pop(context);
                   },
                 ),
+                _AdminDrawerItem(
+                  icon: Icons.group_outlined,
+                  title: 'Gestion des utilisateurs',
+                  isSelected: _selectedIndex == 2,
+                  onTap: () {
+                    setState(() => _selectedIndex = 2);
+                    Navigator.pop(context);
+                  },
+                ),
                 const Divider(),
                 _AdminDrawerItem(
                   icon: Icons.logout_outlined,

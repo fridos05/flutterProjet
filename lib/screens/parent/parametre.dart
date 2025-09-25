@@ -150,6 +150,22 @@ class SettingsScreen extends StatelessWidget {
                     // Navigation vers la reprogrammation
                   },
                 ),
+                _buildDashboardItem(
+                  title: 'Paramètres',
+                  icon: Icons.calendar_today,
+                  isChecked: true,
+                  onTap: () {
+                    // Navigation vers les paramètres
+                  },
+                ),
+                _buildDashboardItem(
+                  title: 'Voir les rapports',
+                  icon: Icons.calendar_today,
+                  isChecked: true,
+                  onTap: () {
+                    // Navigation vers les rapports des cours
+                  },
+                ),
               ],
             ),
           ),

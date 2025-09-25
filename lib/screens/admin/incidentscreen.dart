@@ -93,7 +93,6 @@ class _IncidentDetailScreen extends StatelessWidget {
   final Future<void> Function(IncidentStatus) onStatusUpdated;
 
   const _IncidentDetailScreen({
-    super.key,
     required this.incident,
     required this.onStatusUpdated,
   });

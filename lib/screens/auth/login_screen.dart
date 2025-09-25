@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:edumanager/models/user.dart';
-import 'package:edumanager/screens/parent/parent_dashboard.dart';
 import 'package:edumanager/screens/teacher/teacher_dashboard.dart';
 import 'package:edumanager/screens/student/student_dashboard.dart';
 import 'package:edumanager/screens/witness/witness_dashboard.dart';
@@ -100,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     Widget destination;
     switch (role) {
       case UserRole.parent:
-        destination = const ParentDashboard();
+        destination = const ParentDashboard() as Widget;
         break;
       case UserRole.teacher:
         destination = const TeacherDashboard();
@@ -412,5 +411,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       ),
     );
   }
+}
+
+class ParentDashboard {
+  const ParentDashboard();
 }
 
