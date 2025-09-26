@@ -4,7 +4,7 @@ import 'package:edumanager/screens/teacher/students_screen.dart';
 import 'package:edumanager/screens/teacher/reports_screen.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
 import 'package:edumanager/data/sample_data.dart';
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 import 'package:edumanager/screens/teacher/teacherconnect.dart' hide LoginScreen;
 

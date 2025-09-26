@@ -1,4 +1,4 @@
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/models/course.dart';
 import 'package:edumanager/models/payment.dart';
 import 'package:edumanager/models/notification.dart';

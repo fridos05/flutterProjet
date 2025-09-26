@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 
 class ReportsScreen extends StatefulWidget {

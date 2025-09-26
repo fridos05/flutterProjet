@@ -25,7 +25,7 @@ class CustomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     Widget cardContent = Container(
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -34,7 +34,7 @@ class CustomCard extends StatelessWidget {
         borderRadius: borderRadius ?? BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+            color: theme.colorScheme.shadow.withOpacity(0.05),
             blurRadius: elevation ?? 8,
             offset: const Offset(0, 4),
           ),
@@ -47,8 +47,8 @@ class CustomCard extends StatelessWidget {
       cardContent = Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
           borderRadius: borderRadius ?? BorderRadius.circular(16),
+          onTap: onTap,
           child: cardContent,
         ),
       );
@@ -84,72 +84,60 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return CustomCard(
       onTap: onTap,
-      gradient: backgroundColor != null 
-        ? null 
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primaryContainer,
-              theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            ],
-          ),
       backgroundColor: backgroundColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      gradient: backgroundColor != null ? null : LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          theme.colorScheme.primaryContainer,
+          theme.colorScheme.primaryContainer.withOpacity(0.7),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      subtitle!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      value,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: (iconColor ?? theme.colorScheme.primary).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  color: iconColor ?? theme.colorScheme.primary,
-                  size: 24,
-                ),
-              ),
-            ],
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: (iconColor ?? theme.colorScheme.primary).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor ?? theme.colorScheme.primary, size: 24),
           ),
         ],
       ),

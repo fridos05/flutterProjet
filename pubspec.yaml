@@ -30,6 +30,10 @@ dependencies:
   google_fonts: ^6.1.0
   provider: ^6.0.0
   table_calendar: ^3.0.0
+  shared_preferences: ^2.3.2
+  flutter_secure_storage: ^8.0.0
+  intl: ^0.18.1
+
 
 dev_dependencies:
   flutter_test:

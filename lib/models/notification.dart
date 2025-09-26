@@ -1,50 +1,70 @@
 class AppNotification {
-  final String id;
+  final int id;
+  final int? userId; // null si global
   final String title;
   final String message;
-  final NotificationType type;
   final DateTime createdAt;
   final bool isRead;
-  final String? userId;
-  final String? actionUrl;
+  final NotificationType type;
 
-  const AppNotification({
+  AppNotification({
     required this.id,
+    this.userId,
     required this.title,
     required this.message,
-    required this.type,
     required this.createdAt,
-    this.isRead = false,
-    this.userId,
-    this.actionUrl,
+    required this.isRead,
+    required this.type,
   });
 
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id'],
+      userId: json['user_id'],
+      title: json['title'],
+      message: json['message'],
+      createdAt: DateTime.parse(json['created_at']),
+      isRead: json['is_read'] ?? false,
+      type: NotificationTypeExtension.fromString(json['type'] ?? 'info'),
+    );
+  }
+
   String get timeAgo {
-    final now = DateTime.now();
-    final difference = now.difference(createdAt);
-    
-    if (difference.inDays > 0) {
-      return 'Il y a ${difference.inDays} jour${difference.inDays > 1 ? 's' : ''}';
-    } else if (difference.inHours > 0) {
-      return 'Il y a ${difference.inHours} heure${difference.inHours > 1 ? 's' : ''}';
-    } else if (difference.inMinutes > 0) {
-      return 'Il y a ${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''}';
-    } else {
-      return 'À l\'instant';
-    }
+    final duration = DateTime.now().difference(createdAt);
+    if (duration.inMinutes < 60) return '${duration.inMinutes} min';
+    if (duration.inHours < 24) return '${duration.inHours} h';
+    return '${duration.inDays} j';
   }
 }
 
-enum NotificationType {
-  courseReminder('Rappel de cours', '📚', '0xFF2196F3'),
-  paymentDue('Paiement dû', '💰', '0xFFFF9800'),
-  courseCompleted('Cours terminé', '✅', '0xFF4CAF50'),
-  courseCancelled('Cours annulé', '❌', '0xFFF44336'),
-  newMessage('Nouveau message', '💬', '0xFF9C27B0'),
-  systemUpdate('Mise à jour système', '🔄', '0xFF607D8B');
+enum NotificationType { info, success, warning, error }
 
-  const NotificationType(this.displayName, this.icon, this.color);
-  final String displayName;
-  final String icon;
-  final String color;
+extension NotificationTypeExtension on NotificationType {
+  static NotificationType fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'info': return NotificationType.info;
+      case 'success': return NotificationType.success;
+      case 'warning': return NotificationType.warning;
+      case 'error': return NotificationType.error;
+      default: return NotificationType.info;
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case NotificationType.info: return 'ℹ️';
+      case NotificationType.success: return '✅';
+      case NotificationType.warning: return '⚠️';
+      case NotificationType.error: return '❌';
+    }
+  }
+
+  String get color {
+    switch (this) {
+      case NotificationType.info: return '0xFF2196F3';      // Bleu
+      case NotificationType.success: return '0xFF4CAF50';   // Vert
+      case NotificationType.warning: return '0xFFFFC107';   // Jaune
+      case NotificationType.error: return '0xFFF44336';     // Rouge
+    }
+  }
 }

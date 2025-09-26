@@ -1,70 +1,75 @@
 class Course {
-  final String id;
+  final int id;
+  final int teacherId;
+  final int studentId;
   final String subject;
-  final String teacherId;
-  final String studentId;
   final DateTime startTime;
   final DateTime endTime;
-  final CourseStatus status;
   final double pricePerSession;
-  final String? notes;
-  final String? location;
+  final CourseStatus status;
 
-  const Course({
+  Course({
     required this.id,
-    required this.subject,
     required this.teacherId,
     required this.studentId,
+    required this.subject,
     required this.startTime,
     required this.endTime,
-    required this.status,
     required this.pricePerSession,
-    this.notes,
-    this.location,
+    required this.status,
   });
 
-  Duration get duration => endTime.difference(startTime);
-  
-  String get dayOfWeek {
-    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    return days[startTime.weekday - 1];
+  factory Course.fromJson(Map<String, dynamic> json) {
+    return Course(
+      id: json['id'],
+      teacherId: json['teacher_id'],
+      studentId: json['student_id'],
+      subject: json['subject'],
+      startTime: DateTime.parse(json['start_time']),
+      endTime: DateTime.parse(json['end_time']),
+      pricePerSession: (json['price_per_session'] as num).toDouble(),
+      status: CourseStatusExtension.fromString(json['status']),
+    );
   }
 
-  String get timeString => '${startTime.hour}h${startTime.minute.toString().padLeft(2, '0')}-${endTime.hour}h${endTime.minute.toString().padLeft(2, '0')}';
+  String get dayOfWeek => startTime.weekdayName();
+  String get timeString => '${startTime.hour}:${startTime.minute.toString().padLeft(2, '0')} - ${endTime.hour}:${endTime.minute.toString().padLeft(2, '0')}';
 }
 
-enum CourseStatus {
-  scheduled('Programmé'),
-  completed('Terminé'),
-  cancelled('Annulé'),
-  rescheduled('Reprogrammé'),
-  inProgress('En cours');
+enum CourseStatus { pending, completed, cancelled, reschedule }
 
-  const CourseStatus(this.displayName);
-  final String displayName;
+extension CourseStatusExtension on CourseStatus {
+  static CourseStatus fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'pending': return CourseStatus.pending;
+      case 'completed': return CourseStatus.completed;
+      case 'cancelled': return CourseStatus.cancelled;
+      case 'reschedule': return CourseStatus.reschedule;
+      default: return CourseStatus.pending;
+    }
+  }
+
+  String get displayName {
+    switch (this) {
+      case CourseStatus.pending: return 'En attente';
+      case CourseStatus.completed: return 'Terminé';
+      case CourseStatus.cancelled: return 'Annulé';
+      case CourseStatus.reschedule: return 'À reprogrammer';
+    }
+  }
 }
 
-class Subject {
-  final String id;
-  final String name;
-  final String icon;
-  final String color;
-
-  const Subject({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.color,
-  });
-
-  static const List<Subject> allSubjects = [
-    Subject(id: 'math', name: 'Mathématiques', icon: '📐', color: '0xFF2196F3'),
-    Subject(id: 'french', name: 'Français', icon: '📚', color: '0xFF4CAF50'),
-    Subject(id: 'physics', name: 'Sciences Physiques', icon: '⚗️', color: '0xFF9C27B0'),
-    Subject(id: 'biology', name: 'SVT', icon: '🧬', color: '0xFF4CAF50'),
-    Subject(id: 'english', name: 'Anglais', icon: '🇬🇧', color: '0xFFFF5722'),
-    Subject(id: 'history', name: 'Histoire-Géo', icon: '🌍', color: '0xFF795548'),
-    Subject(id: 'chemistry', name: 'Chimie', icon: '🧪', color: '0xFF607D8B'),
-    Subject(id: 'philosophy', name: 'Philosophie', icon: '💭', color: '0xFF3F51B5'),
-  ];
+extension WeekdayName on int {
+  String weekdayName() {
+    switch (this) {
+      case 1: return 'Lundi';
+      case 2: return 'Mardi';
+      case 3: return 'Mercredi';
+      case 4: return 'Jeudi';
+      case 5: return 'Vendredi';
+      case 6: return 'Samedi';
+      case 7: return 'Dimanche';
+      default: return '';
+    }
+  }
 }

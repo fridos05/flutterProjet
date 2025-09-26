@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:edumanager/data/sample_data.dart';
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/models/course.dart';
 import 'package:edumanager/models/notification.dart';
+import 'package:edumanager/services/enseignant_service.dart';
+import 'package:edumanager/services/eleve_service.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 import 'package:edumanager/widgets/common/user_avatar.dart';
 import 'package:edumanager/screens/parent/account_management.dart';
@@ -12,9 +13,10 @@ import 'package:edumanager/screens/parent/rescheduling_screen.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
 import 'package:edumanager/screens/parent/parametre.dart';
 
-
 class ParentDashboard extends StatefulWidget {
-  const ParentDashboard({super.key});
+  final User currentUser;
+
+  const ParentDashboard({super.key, required this.currentUser});
 
   @override
   State<ParentDashboard> createState() => _ParentDashboardState();
@@ -22,12 +24,59 @@ class ParentDashboard extends StatefulWidget {
 
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
-  final User _currentUser = SampleData.users.firstWhere((u) => u.role == UserRole.parent);
+
+  // Backend data
+  Map<String, dynamic> _stats = {};
+  List<Course> _courses = [];
+  List<AppNotification> _notifications = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    try {
+      final eleveService = EleveService();
+      final enseignantService = EnseignantService();
+
+      // Récupérer stats élèves et enseignants
+     final eleves = await EleveService().getParentEleves();
+      final enseignants = await enseignantService.getEnseignants();
+
+      final stats = {
+        'totalEleves': eleves.length,
+        'totalEnseignants': enseignants.length,
+        'totalCourses': 0, // à lier avec CourseService si dispo
+        'teacherAttendance': 0, // idem si API dispo
+        'monthlyRevenue': 0,
+        'pendingReschedules': 0,
+      };
+
+      setState(() {
+        _stats = stats;
+        _courses = []; // quand tu auras CourseService
+        _notifications = []; // quand tu auras NotificationService
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+      debugPrint('Erreur dashboard: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      _DashboardHome(currentUser: _currentUser),
+      _DashboardHome(
+        currentUser: widget.currentUser,
+        stats: _stats,
+        courses: _courses,
+        notifications: _notifications,
+        loading: _loading,
+      ),
       const AccountManagementScreen(),
       const StatisticsPaymentsScreen(),
       const ReschedulingScreen(),
@@ -39,9 +88,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
         title: Text(
           'EduManager',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
         ),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -60,7 +109,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   Widget _buildDrawer(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Drawer(
       child: Column(
         children: [
@@ -83,29 +132,29 @@ class _ParentDashboardState extends State<ParentDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   UserAvatar(
-                    user: _currentUser,
+                    user: widget.currentUser,
                     size: 60,
                     showStatus: true,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _currentUser.name,
+                    widget.currentUser.name,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    _currentUser.role.displayName,
+                    widget.currentUser.role.displayName,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _currentUser.city ?? 'Lomé',
+                    'Lomé', // on remplace city par une valeur par défaut
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: Colors.white.withOpacity(0.8),
                     ),
                   ),
                 ],
@@ -157,20 +206,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   icon: Icons.settings_outlined,
                   title: 'Parametres',
                   isSelected: _selectedIndex == 4,
-
                   onTap: () {
                     setState(() => _selectedIndex = 4);
                     Navigator.pop(context);
-                    // Navigate to settings
                   },
                 ),
                 _DrawerItem(
                   icon: Icons.help_outline,
                   title: 'Aide',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to help
-                  },
+                  onTap: () => Navigator.pop(context),
                 ),
               ],
             ),
@@ -182,7 +226,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             onTap: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,
               );
             },
@@ -194,9 +238,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _showNotifications(BuildContext context) {
-    final notifications = SampleData.notifications.where(
-      (n) => n.userId == _currentUser.id || n.userId == null,
-    ).toList();
+    final notifications = _notifications
+        .where((n) => n.userId == widget.currentUser.id || n.userId == null)
+        .toList();
 
     showModalBottomSheet(
       context: context,
@@ -225,8 +269,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
               child: Text(
                 'Notifications',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             ),
             Expanded(
@@ -247,6 +291,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 }
 
+
+// Drawer Item
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -263,7 +309,6 @@ class _DrawerItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -273,32 +318,41 @@ class _DrawerItem extends StatelessWidget {
       child: ListTile(
         leading: Icon(
           icon,
-          color: isSelected 
-            ? theme.colorScheme.primary 
-            : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface.withOpacity(0.6),
         ),
         title: Text(
           title,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected 
-              ? theme.colorScheme.primary 
-              : theme.colorScheme.onSurface,
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 }
 
+// Dashboard Home
 class _DashboardHome extends StatefulWidget {
   final User currentUser;
+  final Map<String, dynamic> stats;
+  final List<Course> courses;
+  final List<AppNotification> notifications;
+  final bool loading;
 
-  const _DashboardHome({required this.currentUser});
+  const _DashboardHome({
+    required this.currentUser,
+    required this.stats,
+    required this.courses,
+    required this.notifications,
+    required this.loading,
+  });
 
   @override
   State<_DashboardHome> createState() => _DashboardHomeState();
@@ -311,8 +365,13 @@ class _DashboardHomeState extends State<_DashboardHome> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final stats = SampleData.statistics;
-    
+
+    if (widget.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final stats = widget.stats;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -347,15 +406,14 @@ class _DashboardHomeState extends State<_DashboardHome> {
                 Text(
                   'Bienvenue dans votre espace EduManager',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withOpacity(0.9),
                   ),
                 ),
               ],
             ),
           ),
-          
           const SizedBox(height: 22),
-          
+
           // Stats Cards
           GridView.count(
             crossAxisCount: 2,
@@ -367,55 +425,47 @@ class _DashboardHomeState extends State<_DashboardHome> {
             children: [
               StatCard(
                 title: 'Cours ce mois',
-                value: '${stats['totalCourses']}',
+                value: '${stats['totalCourses'] ?? 0}',
                 icon: Icons.school,
                 iconColor: theme.colorScheme.primary,
               ),
               StatCard(
                 title: 'Présence profs',
-                value: '${stats['teacherAttendance']}%',
+                value: '${stats['teacherAttendance'] ?? 0}%',
                 icon: Icons.check_circle,
                 iconColor: theme.colorScheme.secondary,
               ),
               StatCard(
                 title: 'En attente',
-                value: '${(stats['monthlyRevenue'] * 0.4).toInt().toString()} FCFA',
+                value: '${(stats['monthlyRevenue'] ?? 0).toString()} FCFA',
                 icon: Icons.payments,
                 iconColor: theme.colorScheme.tertiary,
                 subtitle: 'Paiements dus',
               ),
               StatCard(
                 title: 'À reprogrammer',
-                value: '${stats['pendingReschedules']}',
+                value: '${stats['pendingReschedules'] ?? 0}',
                 icon: Icons.schedule,
                 iconColor: Colors.orange,
                 subtitle: 'Cours en attente',
               ),
             ],
           ),
-          
           const SizedBox(height: 32),
-          
+
           // Calendar Section
           Text(
             'Calendrier des cours',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          
           CustomCard(
             child: TableCalendar<Course>(
               firstDay: DateTime.utc(2024, 1, 1),
               lastDay: DateTime.utc(2025, 12, 31),
               focusedDay: _selectedDay,
               calendarFormat: _calendarFormat,
-              eventLoader: (day) {
-                return SampleData.courses.where((course) =>
-                  isSameDay(course.startTime, day)
-                ).toList();
-              },
+              eventLoader: (day) => widget.courses.where((course) => isSameDay(course.startTime, day)).toList(),
               startingDayOfWeek: StartingDayOfWeek.monday,
               calendarStyle: CalendarStyle(
                 outsideDaysVisible: false,
@@ -452,51 +502,35 @@ class _DashboardHomeState extends State<_DashboardHome> {
               },
             ),
           ),
-          
           const SizedBox(height: 24),
-          
+
           // Upcoming Courses
           Text(
             'Prochains cours',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          
-          ...SampleData.courses
-            .where((course) => course.startTime.isAfter(DateTime.now()))
-            .take(3)
-            .map((course) => _CourseCard(course: course))
-            ,
-          
+          ...widget.courses.where((c) => c.startTime.isAfter(DateTime.now())).take(3).map((course) => _CourseCard(course: course)),
+
           const SizedBox(height: 24),
-          
+
           // Recent Notifications
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Notifications récentes',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              
-            ],
+          Text(
+            'Notifications récentes',
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          
-          ...SampleData.notifications
-            .take(3)
-            .map((notification) => _NotificationTile(notification: notification))
-            ,
+          ...widget.notifications.take(3).map((notification) => _NotificationTile(notification: notification)),
         ],
       ),
     );
   }
 }
 
+// CourseCard et NotificationTile restent les mêmes que précédemment
+
+
+// ---------- Course Card ----------
 class _CourseCard extends StatelessWidget {
   final Course course;
 
@@ -505,9 +539,7 @@ class _CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final teacher = SampleData.users.firstWhere((u) => u.id == course.teacherId);
-    final student = SampleData.users.firstWhere((u) => u.id == course.studentId);
-    
+
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -537,12 +569,6 @@ class _CourseCard extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Avec ${teacher.name} • ${student.name}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -581,6 +607,7 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
+// ---------- Notification Tile ----------
 class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
 
@@ -589,19 +616,19 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return CustomCard(
       margin: const EdgeInsets.only(bottom: 8),
-      backgroundColor: notification.isRead 
-        ? theme.cardColor 
-        : theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+      backgroundColor: notification.isRead
+          ? theme.cardColor
+          : theme.colorScheme.primaryContainer.withOpacity(0.3),
       child: Row(
         children: [
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Color(int.parse(notification.type.color)).withValues(alpha: 0.1),
+              color: Color(int.parse(notification.type.color)).withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
@@ -626,7 +653,7 @@ class _NotificationTile extends StatelessWidget {
                 Text(
                   notification.message,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -635,7 +662,7 @@ class _NotificationTile extends StatelessWidget {
                 Text(
                   notification.timeAgo,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ),
               ],

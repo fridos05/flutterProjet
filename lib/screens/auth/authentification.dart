@@ -1,3 +1,5 @@
+/*
+
 // lib/services/auth_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -32,4 +34,4 @@ class AuthService {
       throw Exception(error);
     }
   }
-}
+}*/

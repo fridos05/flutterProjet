@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/services/auth_service.dart';
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/services/api.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/screens/teacher/teacher_dashboard.dart';
 import 'package:edumanager/screens/student/student_dashboard.dart';
 import 'package:edumanager/screens/witness/witness_dashboard.dart';
@@ -39,11 +39,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
@@ -81,24 +81,40 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       setState(() => _isLoading = true);
 
       try {
-        final response = await AuthService.login(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          role: _selectedRole,
+        final authService = AuthService();
+        final response = await authService.login(
+          LoginRequest(
+            courriel: _emailController.text.trim(),
+            motDePasse: _passwordController.text,
+            role: _selectedRole,
+          ),
         );
 
-        final String roleFromApi = response['role'] as String;
+        // ✅ Vérifie si l’API a bien renvoyé un rôle
+        final String roleFromApi = response.role;
+
         UserRole userRole;
         switch (roleFromApi) {
-          case 'parent': userRole = UserRole.parent; break;
-          case 'eleve': userRole = UserRole.student; break;
-          case 'enseignant': userRole = UserRole.teacher; break;
-          case 'temoin': userRole = UserRole.witness; break;
-          default: throw Exception('Rôle non supporté');
+          case 'parent':
+            userRole = UserRole.parent;
+            break;
+          case 'eleve':
+            userRole = UserRole.student;
+            break;
+          case 'enseignant':
+            userRole = UserRole.teacher;
+            break;
+          case 'temoin':
+            userRole = UserRole.witness;
+            break;
+          case 'admin':
+            userRole = UserRole.admin;
+            break;
+          default:
+            throw Exception('Rôle non supporté: $roleFromApi');
         }
 
         _navigateToRole(userRole);
-
       } catch (e) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,13 +127,23 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void _navigateToRole(UserRole role) {
     Widget destination;
     switch (role) {
-      case UserRole.parent: destination = const ParentDashboard(); break;
-      case UserRole.teacher: destination = const TeacherDashboard(); break;
-      case UserRole.student: destination = const StudentDashboard(); break;
-      case UserRole.witness: destination = const WitnessDashboard(); break;
-      case UserRole.admin: destination = const AdminDashboard(); break;
+      case UserRole.parent:
+        destination = const ParentDashboard();
+        break;
+      case UserRole.teacher:
+        destination = const TeacherDashboard();
+        break;
+      case UserRole.student:
+        destination = const StudentDashboard();
+        break;
+      case UserRole.witness:
+        destination = const WitnessDashboard();
+        break;
+      case UserRole.admin:
+        destination = const AdminDashboard();
+        break;
     }
-    
+
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => destination,
@@ -159,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SizedBox(height: MediaQuery.of(context).size.height * 0.05),
-                    
+
                     // Logo et titre
                     Container(
                       padding: const EdgeInsets.all(32),
@@ -212,9 +238,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 48),
-                    
+
                     // Formulaire de connexion
                     Container(
                       padding: const EdgeInsets.all(32),
@@ -243,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 32),
-                            
+
                             TextFormField(
                               controller: _emailController,
                               decoration: InputDecoration(
@@ -253,19 +279,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Colors.red),
-                                ),
                               ),
                               validator: _validateEmail,
                             ),
                             const SizedBox(height: 20),
-                            
+
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
@@ -287,14 +305,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Colors.red),
-                                ),
                               ),
                               validator: _validatePassword,
                             ),
@@ -307,15 +317,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 labelText: 'Rôle *',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Colors.red),
                                 ),
                               ),
                               items: const [
@@ -323,6 +324,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 DropdownMenuItem(value: 'eleve', child: Text('Élève')),
                                 DropdownMenuItem(value: 'enseignant', child: Text('Enseignant')),
                                 DropdownMenuItem(value: 'temoin', child: Text('Témoin')),
+                                DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
                               ],
                               onChanged: (value) {
                                 if (value != null) {
@@ -332,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               validator: (value) => value == null ? 'Sélectionnez un rôle' : null,
                             ),
                             const SizedBox(height: 32),
-                            
+
                             ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
@@ -342,7 +344,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                elevation: 3,
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -365,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(height: MediaQuery.of(context).size.height * 0.05),
                   ],
                 ),

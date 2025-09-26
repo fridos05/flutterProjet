@@ -1,4 +1,4 @@
-import 'package:edumanager/models/user.dart';
+import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/screens/admin/incidentscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:edumanager/models/admin_models.dart';
