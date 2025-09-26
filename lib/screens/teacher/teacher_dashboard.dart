@@ -6,6 +6,7 @@ import 'package:edumanager/screens/auth/login_screen.dart';
 import 'package:edumanager/data/sample_data.dart';
 import 'package:edumanager/models/user.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
+import 'package:edumanager/screens/teacher/teacherconnect.dart' hide LoginScreen;
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});

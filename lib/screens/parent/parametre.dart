@@ -4,7 +4,8 @@ import 'package:edumanager/screens/auth/login_screen.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
   
-  BuildContext? get context => null;
+  // SUPPRIMEZ cette propriété car elle crée un conflit
+  // BuildContext? get context => null;
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +19,10 @@ class SettingsScreen extends StatelessWidget {
             _buildHeader(context),
             
             // Tableau de bord
-            _buildDashboardSection(),
+            _buildDashboardSection(context),
             
             // Paramètres
-            _buildSettingsSection(),
+            _buildSettingsSection(context),
             
             // Déconnexion
             _buildLogoutButton(context),
@@ -105,7 +106,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDashboardSection() {
+  Widget _buildDashboardSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -113,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           Text(
             'Tableau de bord',
-            style: Theme.of(context!).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue[900],
                 ),
@@ -134,6 +135,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               children: [
                 _buildDashboardItem(
+                  context: context,
                   title: 'Statistiques & Paiements',
                   icon: Icons.bar_chart,
                   isChecked: false,
@@ -143,6 +145,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildDashboardItem(
+                  context: context,
                   title: 'Reprogrammation',
                   icon: Icons.calendar_today,
                   isChecked: true,
@@ -151,6 +154,7 @@ class SettingsScreen extends StatelessWidget {
                   },
                 ),
                 _buildDashboardItem(
+                  context: context,
                   title: 'Paramètres',
                   icon: Icons.calendar_today,
                   isChecked: true,
@@ -159,6 +163,7 @@ class SettingsScreen extends StatelessWidget {
                   },
                 ),
                 _buildDashboardItem(
+                  context: context,
                   title: 'Voir les rapports',
                   icon: Icons.calendar_today,
                   isChecked: true,
@@ -174,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildSettingsSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -182,7 +187,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           Text(
             'Paramètres',
-            style: Theme.of(context!).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue[900],
                 ),
@@ -203,6 +208,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               children: [
                 _buildSettingsItem(
+                  context: context,
                   title: 'Aide',
                   icon: Icons.help_outline,
                   onTap: () {
@@ -211,6 +217,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildSettingsItem(
+                  context: context,
                   title: 'Notifications',
                   icon: Icons.notifications_none,
                   onTap: () {
@@ -219,11 +226,12 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildSettingsItem(
+                  context: context,
                   title: 'Langue',
                   icon: Icons.language,
                   trailing: Text(
                     'Français',
-                    style: Theme.of(context!).textTheme.bodySmall?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                         ),
                   ),
@@ -233,6 +241,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildSettingsItem(
+                  context: context,
                   title: 'Confidentialité',
                   icon: Icons.security,
                   onTap: () {
@@ -248,6 +257,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildDashboardItem({
+    required BuildContext context,
     required String title,
     required IconData icon,
     required bool isChecked,
@@ -265,7 +275,7 @@ class SettingsScreen extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: Theme.of(context!).textTheme.bodyMedium?.copyWith(
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
             ),
       ),
@@ -289,6 +299,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildSettingsItem({
+    required BuildContext context,
     required String title,
     required IconData icon,
     Widget? trailing,
@@ -306,7 +317,7 @@ class SettingsScreen extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: Theme.of(context!).textTheme.bodyMedium?.copyWith(
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
             ),
       ),
@@ -339,7 +350,7 @@ class SettingsScreen extends StatelessWidget {
             foregroundColor: Colors.red[700],
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               side: BorderSide(color: Colors.red[200]!),
             ),
             elevation: 0,

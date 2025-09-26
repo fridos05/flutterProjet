@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/services/auth_service.dart';
-import 'package:edumanager/models/user.dart';
 import 'package:edumanager/screens/teacher/teacher_dashboard.dart';
-import 'package:edumanager/screens/student/student_dashboard.dart';
-import 'package:edumanager/screens/witness/witness_dashboard.dart';
-import 'package:edumanager/screens/admin/admin_dashboard.dart';
-import 'package:edumanager/screens/parent/parent_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  String _selectedRole = 'parent';
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -79,55 +72,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
+      
+      // Simulation de connexion (1 seconde)
+      await Future.delayed(const Duration(seconds: 1));
 
-      try {
-        final response = await AuthService.login(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          role: _selectedRole,
-        );
-
-        final String roleFromApi = response['role'] as String;
-        UserRole userRole;
-        switch (roleFromApi) {
-          case 'parent': userRole = UserRole.parent; break;
-          case 'eleve': userRole = UserRole.student; break;
-          case 'enseignant': userRole = UserRole.teacher; break;
-          case 'temoin': userRole = UserRole.witness; break;
-          default: throw Exception('Rôle non supporté');
-        }
-
-        _navigateToRole(userRole);
-
-      } catch (e) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
-        );
-      }
+      // Redirection directe vers le dashboard enseignant
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const TeacherDashboard()),
+        (route) => false,
+      );
     }
-  }
-
-  void _navigateToRole(UserRole role) {
-    Widget destination;
-    switch (role) {
-      case UserRole.parent: destination = const ParentDashboard(); break;
-      case UserRole.teacher: destination = const TeacherDashboard(); break;
-      case UserRole.student: destination = const StudentDashboard(); break;
-      case UserRole.witness: destination = const WitnessDashboard(); break;
-      case UserRole.admin: destination = const AdminDashboard(); break;
-    }
-    
-    Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => destination,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-      (route) => false,
-    );
   }
 
   @override
@@ -203,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'L\'éducation à portée de main',
+                            'Espace Enseignant',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.white.withOpacity(0.9),
                               fontStyle: FontStyle.italic,
@@ -235,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Connexion',
+                              'Connexion Enseignant',
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
@@ -297,39 +252,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                               validator: _validatePassword,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Sélecteur de rôle
-                            DropdownButtonFormField<String>(
-                              value: _selectedRole,
-                              decoration: InputDecoration(
-                                labelText: 'Rôle *',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Colors.red),
-                                ),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                                DropdownMenuItem(value: 'eleve', child: Text('Élève')),
-                                DropdownMenuItem(value: 'enseignant', child: Text('Enseignant')),
-                                DropdownMenuItem(value: 'temoin', child: Text('Témoin')),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() => _selectedRole = value);
-                                }
-                              },
-                              validator: (value) => value == null ? 'Sélectionnez un rôle' : null,
                             ),
                             const SizedBox(height: 32),
                             

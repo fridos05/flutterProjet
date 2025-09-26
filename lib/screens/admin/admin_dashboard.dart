@@ -5,7 +5,6 @@ import 'package:edumanager/models/admin_models.dart';
 import 'package:edumanager/widgets/common/custom_card.dart';
 import 'package:edumanager/widgets/common/user_avatar.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
-import 'package:edumanager/screens/admin/usermanagementscreen.dart';
 
 // 🔴 VÉRIFIE LE NOM EXACT DE TON FICHIER D'INCIDENT
 // Exemples possibles :
@@ -31,10 +30,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-  _DashboardOverview(currentUser: _currentUser), // index 0
-  const UserManagementScreen(),                  // index 1
-  const IncidentAdminScreen(),                   // index 2
-];
+      _DashboardOverview(currentUser: _currentUser), // index 0
+      const IncidentAdminScreen(),                    // index 1
+    ];
 
     // 🔒 Sécurité : évite les index invalides
     if (_selectedIndex < 0 || _selectedIndex >= pages.length) {
@@ -172,15 +170,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   isSelected: _selectedIndex == 1,
                   onTap: () {
                     setState(() => _selectedIndex = 1);
-                    Navigator.pop(context);
-                  },
-                ),
-                _AdminDrawerItem(
-                  icon: Icons.group_outlined,
-                  title: 'Gestion des utilisateurs',
-                  isSelected: _selectedIndex == 2,
-                  onTap: () {
-                    setState(() => _selectedIndex = 2);
                     Navigator.pop(context);
                   },
                 ),
