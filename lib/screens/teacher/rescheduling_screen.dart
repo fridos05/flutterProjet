@@ -27,23 +27,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _loadSeances() async {
-    print('[ScheduleScreen-Parent] Chargement des séances...');
     try {
-      final seances = await SeanceService().getSeancesParent();
-      print('[ScheduleScreen-Parent] ${seances.length} séances reçues');
+      final seances = await SeanceService().getSeances();
       setState(() {
         _seances = seances;
         _isLoading = false;
       });
-    } catch (e, stackTrace) {
-      print('[ScheduleScreen-Parent] Erreur: $e');
-      print('[ScheduleScreen-Parent] StackTrace: $stackTrace');
+    } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur: $e')),
+      );
     }
   }
 
@@ -296,21 +290,34 @@ class _SeanceCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        seance.matiere,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Text(
+                      seance.matiere,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    _buildStatutBadge(seance),
+                    PopupMenuButton(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          onTap: onDelete,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Supprimer', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 Text(
                   seance.heure,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
@@ -324,31 +331,6 @@ class _SeanceCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatutBadge(Seance seance) {
-    Color color;
-    IconData icon;
-
-    if (seance.valideeParTemoin) {
-      color = Colors.green;
-      icon = Icons.check_circle;
-    } else if (seance.valideeParParent) {
-      color = Colors.blue;
-      icon = Icons.thumb_up;
-    } else {
-      color = Colors.orange;
-      icon = Icons.pending;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Icon(icon, size: 16, color: color),
     );
   }
 }

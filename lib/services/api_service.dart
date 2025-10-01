@@ -1,111 +1,235 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Configuration de base de l'API
-class ApiConfig {
-  static const String baseUrl = 'http://192.168.10.101:8000';
-  static const int timeoutSeconds = 30;
-}
-
-// Service principal pour les appels API
 class ApiService {
-  final String baseUrl;
+  static const String baseUrl = 'http://192.168.137.80:8000';
+  static const bool enableDebugLogs = true; // Activer/désactiver les logs
 
-  ApiService({this.baseUrl = ApiConfig.baseUrl});
-
-  // Récupérer le token depuis SharedPreferences
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+  void _log(String message, {String? tag, dynamic data}) {
+    if (enableDebugLogs) {
+      final logTag = tag ?? 'ApiService';
+      developer.log(
+        message,
+        name: logTag,
+        time: DateTime.now(),
+      );
+      if (data != null) {
+        developer.log(
+          'Data: ${json.encode(data)}',
+          name: logTag,
+        );
+      }
+    }
   }
 
-  // Headers communs
-  Future<Map<String, String>> get headers async {
+  Future<String?> _getToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      _log('Token récupéré: ${token != null ? "✓ Présent" : "✗ Absent"}', tag: 'Auth');
+      return token;
+    } catch (e) {
+      _log('❌ Erreur récupération token: $e', tag: 'Auth');
+      return null;
+    }
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
     final token = await _getToken();
-    return {
+    final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
+    _log('Headers préparés', tag: 'Request', data: headers);
+    return headers;
   }
 
-  // Méthode utilitaire pour construire les URLs
-  String buildUrl(String endpoint) => baseUrl + endpoint;
-
-  // Méthodes HTTP avec gestion d'erreurs
   Future<http.Response> get(String endpoint) async {
+    final url = '$baseUrl$endpoint';
+    _log('🔵 GET Request', tag: 'HTTP', data: {'url': url});
+    
     try {
       final response = await http.get(
-        Uri.parse(buildUrl(endpoint)),
-        headers: await headers,
-      ).timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+        Uri.parse(url),
+        headers: await _getHeaders(),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('⏱️ Timeout: Le serveur ne répond pas après 30 secondes');
+        },
+      );
       
-      return _handleResponse(response);
+      _log(
+        '✅ GET Response ${response.statusCode}',
+        tag: 'HTTP',
+        data: {
+          'url': url,
+          'status': response.statusCode,
+          'body': response.body.length > 500 
+              ? '${response.body.substring(0, 500)}...' 
+              : response.body,
+        },
+      );
+      
+      return _handleResponse(response, 'GET', url);
     } catch (e) {
-      throw Exception('Erreur réseau: $e');
+      _log('❌ GET Error: $e', tag: 'HTTP', data: {'url': url});
+      throw Exception('Erreur GET $endpoint: $e');
     }
   }
 
   Future<http.Response> post(String endpoint, Map<String, dynamic> data) async {
+    final url = '$baseUrl$endpoint';
+    _log('🟢 POST Request', tag: 'HTTP', data: {'url': url, 'payload': data});
+    
     try {
       final response = await http.post(
-        Uri.parse(buildUrl(endpoint)),
-        headers: await headers,
+        Uri.parse(url),
+        headers: await _getHeaders(),
         body: json.encode(data),
-      ).timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('⏱️ Timeout: Le serveur ne répond pas après 30 secondes');
+        },
+      );
       
-      return _handleResponse(response);
+      _log(
+        '✅ POST Response ${response.statusCode}',
+        tag: 'HTTP',
+        data: {
+          'url': url,
+          'status': response.statusCode,
+          'body': response.body.length > 500 
+              ? '${response.body.substring(0, 500)}...' 
+              : response.body,
+        },
+      );
+      
+      return _handleResponse(response, 'POST', url);
     } catch (e) {
-      throw Exception('Erreur réseau: $e');
+      _log('❌ POST Error: $e', tag: 'HTTP', data: {'url': url, 'payload': data});
+      throw Exception('Erreur POST $endpoint: $e');
     }
   }
 
   Future<http.Response> put(String endpoint, Map<String, dynamic> data) async {
+    final url = '$baseUrl$endpoint';
+    _log('🟡 PUT Request', tag: 'HTTP', data: {'url': url, 'payload': data});
+    
     try {
       final response = await http.put(
-        Uri.parse(buildUrl(endpoint)),
-        headers: await headers,
+        Uri.parse(url),
+        headers: await _getHeaders(),
         body: json.encode(data),
-      ).timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('⏱️ Timeout: Le serveur ne répond pas après 30 secondes');
+        },
+      );
       
-      return _handleResponse(response);
+      _log(
+        '✅ PUT Response ${response.statusCode}',
+        tag: 'HTTP',
+        data: {
+          'url': url,
+          'status': response.statusCode,
+          'body': response.body.length > 500 
+              ? '${response.body.substring(0, 500)}...' 
+              : response.body,
+        },
+      );
+      
+      return _handleResponse(response, 'PUT', url);
     } catch (e) {
-      throw Exception('Erreur réseau: $e');
+      _log('❌ PUT Error: $e', tag: 'HTTP', data: {'url': url, 'payload': data});
+      throw Exception('Erreur PUT $endpoint: $e');
     }
   }
 
   Future<http.Response> delete(String endpoint) async {
+    final url = '$baseUrl$endpoint';
+    _log('🔴 DELETE Request', tag: 'HTTP', data: {'url': url});
+    
     try {
       final response = await http.delete(
-        Uri.parse(buildUrl(endpoint)),
-        headers: await headers,
-      ).timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+        Uri.parse(url),
+        headers: await _getHeaders(),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('⏱️ Timeout: Le serveur ne répond pas après 30 secondes');
+        },
+      );
       
-      return _handleResponse(response);
+      _log(
+        '✅ DELETE Response ${response.statusCode}',
+        tag: 'HTTP',
+        data: {
+          'url': url,
+          'status': response.statusCode,
+          'body': response.body,
+        },
+      );
+      
+      return _handleResponse(response, 'DELETE', url);
     } catch (e) {
-      throw Exception('Erreur réseau: $e');
+      _log('❌ DELETE Error: $e', tag: 'HTTP', data: {'url': url});
+      throw Exception('Erreur DELETE $endpoint: $e');
     }
   }
 
-  http.Response _handleResponse(http.Response response) {
+  http.Response _handleResponse(http.Response response, String method, String url) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
     } else {
+      // Log détaillé de l'erreur
+      String errorMessage = 'Erreur HTTP ${response.statusCode}';
+      
+      try {
+        final errorBody = json.decode(response.body);
+        if (errorBody is Map) {
+          if (errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody.containsKey('error')) {
+            errorMessage = errorBody['error'];
+          } else if (errorBody.containsKey('errors')) {
+            errorMessage = errorBody['errors'].toString();
+          }
+        }
+      } catch (e) {
+        errorMessage = response.body;
+      }
+      
+      _log(
+        '❌ HTTP Error ${response.statusCode}',
+        tag: 'HTTP',
+        data: {
+          'method': method,
+          'url': url,
+          'status': response.statusCode,
+          'error': errorMessage,
+          'body': response.body,
+        },
+      );
+      
       throw HttpException(
-        'Erreur HTTP ${response.statusCode}: ${response.body}',
+        errorMessage,
         response.statusCode,
+        response.body,
       );
     }
   }
 
-  // Méthode pour sauvegarder le token après login
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
   }
 
-  // Méthode pour supprimer le token après logout
   static Future<void> removeToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
@@ -115,8 +239,9 @@ class ApiService {
 class HttpException implements Exception {
   final String message;
   final int statusCode;
+  final String? body;
 
-  HttpException(this.message, this.statusCode);
+  HttpException(this.message, this.statusCode, [this.body]);
 
   @override
   String toString() => 'HttpException: $message (Status: $statusCode)';

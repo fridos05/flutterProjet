@@ -275,42 +275,47 @@ class _PaymentsTab extends StatefulWidget {
 class _PaymentsTabState extends State<_PaymentsTab> {
   PaymentStatus? _statusFilter;
 
-  List<Payment> get filteredPayments {
+  List<Map<String, dynamic>> get filteredPayments {
     var payments = SampleData.payments;
     if (_statusFilter != null) {
-      payments = payments.where((p) => p.status == _statusFilter).toList();
+      payments = payments.where((p) => p['status'] == _statusFilter.toString()).toList();
     }
     return payments;
   }
 
-  PaymentSummary get paymentSummary {
+  Map<String, dynamic> get paymentSummary {
     final payments = SampleData.payments;
     double totalPaid = 0;
     double totalPending = 0;
     double totalOverdue = 0;
 
     for (final payment in payments) {
-      switch (payment.status) {
-        case PaymentStatus.paid:
-          totalPaid += payment.amount;
+      final status = payment['status'] as String;
+      final amount = (payment['amount'] as num).toDouble();
+      
+      switch (status) {
+        case 'paid':
+          totalPaid += amount;
           break;
-        case PaymentStatus.pending:
-          totalPending += payment.amount;
+        case 'pending':
+          totalPending += amount;
           break;
-        case PaymentStatus.overdue:
-          totalOverdue += payment.amount;
-          break;
-        case PaymentStatus.cancelled:
+        case 'overdue':
+          totalOverdue += amount;
           break;
       }
     }
 
-    return PaymentSummary(
-      totalPaid: totalPaid,
-      totalPending: totalPending,
-      totalOverdue: totalOverdue,
-      totalTransactions: payments.length,
-    );
+    return {
+      'totalPaid': totalPaid,
+      'totalPending': totalPending,
+      'totalOverdue': totalOverdue,
+      'totalTransactions': payments.length,
+      'formattedTotal': '${totalPaid + totalPending + totalOverdue} FCFA',
+      'formattedPaid': '$totalPaid FCFA',
+      'formattedPending': '$totalPending FCFA',
+      'formattedOverdue': '$totalOverdue FCFA',
+    };
   }
 
   @override
@@ -334,7 +339,7 @@ class _PaymentsTabState extends State<_PaymentsTab> {
                       child: Column(
                         children: [
                           Text(
-                            summary.formattedTotal,
+                            summary['formattedTotal'],
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.primary,
@@ -357,7 +362,7 @@ class _PaymentsTabState extends State<_PaymentsTab> {
                       child: Column(
                         children: [
                           Text(
-                            '${summary.totalTransactions}',
+                            '${summary['totalTransactions']}',
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.secondary,
@@ -378,11 +383,11 @@ class _PaymentsTabState extends State<_PaymentsTab> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: _PaymentStatusCard('Payé', summary.formattedPaid, Colors.green)),
+                  Expanded(child: _PaymentStatusCard('Payé', summary['formattedPaid'], Colors.green)),
                   const SizedBox(width: 8),
-                  Expanded(child: _PaymentStatusCard('En attente', summary.formattedPending, Colors.orange)),
+                  Expanded(child: _PaymentStatusCard('En attente', summary['formattedPending'], Colors.orange)),
                   const SizedBox(width: 8),
-                  Expanded(child: _PaymentStatusCard('En retard', summary.formattedOverdue, Colors.red)),
+                  Expanded(child: _PaymentStatusCard('En retard', summary['formattedOverdue'], Colors.red)),
                 ],
               ),
             ],
@@ -643,108 +648,82 @@ class _PaymentStatusCard extends StatelessWidget {
 }
 
 class _PaymentCard extends StatelessWidget {
-  final Payment payment;
+  final Map<String, dynamic> payment;
 
   const _PaymentCard({required this.payment});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = payment['status'] as String;
+    final amount = payment['amount'] as num;
+    final date = payment['date'] as String;
+    final teacher = payment['teacher'] as String;
     
-    return CustomCard(
+    return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  payment.description,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(payment.status).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  payment.status.displayName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _getStatusColor(payment.status),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: _getStatusColor(status).withOpacity(0.2),
+          child: Icon(
+            _getStatusIcon(status),
+            color: _getStatusColor(status),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                payment.formattedAmount,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Échéance',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  Text(
-                    '${payment.dueDate.day}/${payment.dueDate.month}/${payment.dueDate.year}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: payment.isOverdue ? Colors.red : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        ),
+        title: Text(
+          teacher,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
           ),
-          if (payment.paidDate != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.check_circle, size: 16, color: Colors.green),
-                const SizedBox(width: 4),
-                Text(
-                  'Payé le ${payment.paidDate!.day}/${payment.paidDate!.month}/${payment.paidDate!.year}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.green,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
+        ),
+        subtitle: Text('$date • ${_getStatusLabel(status)}'),
+        trailing: Text(
+          '$amount FCFA',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
       ),
     );
   }
 
-  Color _getStatusColor(PaymentStatus status) {
+  Color _getStatusColor(String status) {
     switch (status) {
-      case PaymentStatus.paid:
+      case 'paid':
         return Colors.green;
-      case PaymentStatus.pending:
+      case 'pending':
         return Colors.orange;
-      case PaymentStatus.overdue:
+      case 'overdue':
         return Colors.red;
-      case PaymentStatus.cancelled:
+      default:
         return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'paid':
+        return Icons.check_circle;
+      case 'pending':
+        return Icons.schedule;
+      case 'overdue':
+        return Icons.warning;
+      default:
+        return Icons.info;
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'paid':
+        return 'Payé';
+      case 'pending':
+        return 'En attente';
+      case 'overdue':
+        return 'En retard';
+      default:
+        return 'Annulé';
     }
   }
 }

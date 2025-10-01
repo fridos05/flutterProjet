@@ -1,56 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/models/user_model.dart';
-import 'package:edumanager/models/course.dart';
-import 'package:edumanager/services/course_service.dart';
-import 'package:edumanager/widgets/common/custom_card.dart';
-import 'create_course_screen.dart';
+import 'package:edumanager/services/seance_service.dart';
+import 'package:edumanager/services/rapport_service.dart';
+import 'package:edumanager/models/seance_model.dart';
+import 'package:edumanager/screens/teacher/create_seance_dialog.dart';
+import 'package:edumanager/screens/teacher/reschedule_seance_dialog.dart';
 
 class ScheduleScreen extends StatefulWidget {
-  final Teacher teacher;
-
-  const ScheduleScreen({required this.teacher, super.key});
+  const ScheduleScreen({Key? key}) : super(key: key);
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  final CourseService _courseService = CourseService();
-  List<Course> _courses = [];
-  bool _loading = true;
+  final SeanceService _seanceService = SeanceService();
+  final RapportService _rapportService = RapportService();
+  List<Seance> _seances = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchCourses();
+    _loadSeances();
   }
 
-  Future<void> _fetchCourses() async {
-    setState(() => _loading = true);
+  Future<void> _loadSeances() async {
+    print('🔄 [ScheduleScreen] Début chargement des séances...');
+    setState(() => _isLoading = true);
     try {
-      // Appelle ton service pour récupérer les cours de l'enseignant
-      final courses = await _courseService.fetchCoursesByTeacher(widget.teacher.id);
-      setState(() => _courses = courses);
-    } catch (e) {
-      debugPrint('Erreur récupération cours: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Erreur récupération cours')));
-    } finally {
-      setState(() => _loading = false);
+      print('📡 [ScheduleScreen] Appel API getSeances()...');
+      final seances = await _seanceService.getSeances();
+      print('✅ [ScheduleScreen] ${seances.length} séances reçues');
+      
+      setState(() {
+        _seances = seances;
+        _isLoading = false;
+      });
+      
+      print('✅ [ScheduleScreen] État mis à jour avec succès');
+    } catch (e, stackTrace) {
+      print('❌ [ScheduleScreen] ERREUR lors du chargement des séances');
+      print('❌ Type: ${e.runtimeType}');
+      print('❌ Message: $e');
+      print('❌ StackTrace: $stackTrace');
+      
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
-  void _openCreateCourse() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CreateCourseScreen(teacher: widget.teacher),
+  Future<void> _showRapportDialog(Seance seance) async {
+    final contenuController = TextEditingController();
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rédiger le rapport'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Séance: ${seance.matiere}'),
+              Text('${seance.jourComplet} - ${seance.heureFormatee}'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contenuController,
+                decoration: const InputDecoration(
+                  labelText: 'Contenu du rapport',
+                  hintText: 'Décrivez le déroulement de la séance...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (contenuController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Veuillez rédiger le rapport')),
+                );
+                return;
+              }
+              
+              try {
+                await _rapportService.creerRapportSeance(
+                  seance.id,
+                  contenuController.text,
+                );
+                Navigator.pop(context, true);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erreur: $e')),
+                );
+              }
+            },
+            child: const Text('Enregistrer'),
+          ),
+        ],
       ),
     );
 
     if (result == true) {
-      // Si un cours a été créé, rafraîchir la liste
-      _fetchCourses();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Rapport enregistré ! En attente de validation du témoin.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _loadSeances();
     }
   }
 
@@ -58,66 +131,156 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _courses.isEmpty
-              ? Center(child: Text('Aucun cours disponible', style: theme.textTheme.bodyMedium))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _courses.length,
-                  itemBuilder: (context, index) {
-                    final course = _courses[index];
-                    return _CourseCard(course: course);
-                  },
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    Widget content;
+    if (_seances.isEmpty) {
+      content = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.calendar_month,
+              size: 64,
+              color: theme.colorScheme.onSurface.withOpacity(0.3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Aucune séance',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Créez votre première séance',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = RefreshIndicator(
+        onRefresh: _loadSeances,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _seances.length,
+          itemBuilder: (context, index) {
+            final seance = _seances[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.calendar_today,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            seance.matiere,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '${seance.jour} - ${seance.heure}',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (seance.valideeParParent && seance.rapportId == null)
+                      ElevatedButton.icon(
+                        onPressed: () => _showRapportDialog(seance),
+                        icon: const Icon(Icons.description, size: 16),
+                        label: const Text('Rapport', style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        ),
+                      )
+                    else ...[
+                      _buildStatutBadge(seance, theme),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: () async {
+                          final result = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => RescheduleSeanceDialog(seance: seance),
+                          );
+                          if (result == true) {
+                            _loadSeances();
+                          }
+                        },
+                        tooltip: 'Reprogrammer',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ],
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openCreateCourse,
-        child: const Icon(Icons.add),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: content,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await showDialog<bool>(
+            context: context,
+            builder: (context) => const CreateSeanceDialog(),
+          );
+          
+          if (result == true) {
+            _loadSeances(); // Recharger les séances
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Nouvelle séance'),
       ),
     );
   }
-}
 
-class _CourseCard extends StatelessWidget {
-  final Course course;
+  Widget _buildStatutBadge(Seance seance, ThemeData theme) {
+    Color color;
+    String text;
+    IconData icon;
 
-  const _CourseCard({required this.course});
+    if (seance.valideeParTemoin) {
+      color = Colors.green;
+      text = 'Validée';
+      icon = Icons.check_circle;
+    } else if (seance.valideeParParent) {
+      color = Colors.blue;
+      text = 'Approuvée';
+      icon = Icons.thumb_up;
+    } else {
+      color = Colors.orange;
+      text = 'En attente';
+      icon = Icons.pending;
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 60,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.subject,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('${course.dayOfWeek} ${course.timeString}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-          Text('${course.pricePerSession.toInt()} FCFA',
-              style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.tertiary, fontWeight: FontWeight.bold)),
-        ],
-      ),
+    return Chip(
+      avatar: Icon(icon, size: 16, color: color),
+      label: Text(text, style: TextStyle(color: color, fontSize: 12)),
+      backgroundColor: color.withOpacity(0.1),
+      side: BorderSide(color: color.withOpacity(0.3)),
     );
   }
 }

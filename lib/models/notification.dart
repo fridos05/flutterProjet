@@ -37,7 +37,7 @@ class AppNotification {
   }
 }
 
-enum NotificationType { info, success, warning, error }
+enum NotificationType { info, success, warning, error, courseReminder }
 
 extension NotificationTypeExtension on NotificationType {
   static NotificationType fromString(String value) {
@@ -50,7 +50,7 @@ extension NotificationTypeExtension on NotificationType {
     }
   }
 
-  String get icon {
+  /*String get icon {
     switch (this) {
       case NotificationType.info: return 'ℹ️';
       case NotificationType.success: return '✅';
@@ -66,5 +66,5 @@ extension NotificationTypeExtension on NotificationType {
       case NotificationType.warning: return '0xFFFFC107';   // Jaune
       case NotificationType.error: return '0xFFF44336';     // Rouge
     }
-  }
+  }*/
 }

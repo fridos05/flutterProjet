@@ -1,6 +1,6 @@
 // Configuration de base de l'API
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.10.101:8000'; // Adaptez selon votre environnement
+  static const String baseUrl = 'http://192.168.137.80:8000'; // Adaptez selon votre environnement
   static const int timeoutSeconds = 30;
 }
 
@@ -46,6 +46,8 @@ class ApiEndpoints {
   // Divers
   static const String niveauIndex = '/api/niveau/index';
   static const String associations = '/api/associations';
+
+  static String get seances => null;
 }
 
 // Modèles de données basés sur votre backend

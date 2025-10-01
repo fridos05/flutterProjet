@@ -1,6 +1,5 @@
 import 'package:edumanager/models/enseignant_model.dart';
 import 'package:flutter/material.dart';
-import 'package:edumanager/models/user_model.dart';
 import 'package:edumanager/services/api.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -37,8 +36,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
     setState(() => _loading = true);
 
-    final startTime =
-        DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute);
 
     final payload = {
       "seances": [
@@ -88,7 +85,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Créer un cours')),
       body: Padding(

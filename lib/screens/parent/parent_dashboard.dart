@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:edumanager/models/user_model.dart';
-import 'package:edumanager/models/course.dart';
-import 'package:edumanager/models/notification.dart';
-import 'package:edumanager/services/enseignant_service.dart';
+import 'package:edumanager/services/parent_service.dart';
+import 'package:edumanager/services/auth_service.dart';
 import 'package:edumanager/services/eleve_service.dart';
-import 'package:edumanager/widgets/common/custom_card.dart';
-import 'package:edumanager/widgets/common/user_avatar.dart';
+import 'package:edumanager/services/enseignant_service.dart';
+import 'package:edumanager/services/temoin_service.dart';
+import 'package:edumanager/screens/auth/login_screen.dart';
 import 'package:edumanager/screens/parent/account_management.dart';
 import 'package:edumanager/screens/parent/statistics_payments.dart';
 import 'package:edumanager/screens/parent/rescheduling_screen.dart';
-import 'package:edumanager/screens/auth/login_screen.dart';
-import 'package:edumanager/screens/parent/parametre.dart';
+import 'package:edumanager/screens/parent/seances_validation_screen.dart';
+import 'package:edumanager/screens/parent/rapports_screen.dart';
+
 
 class ParentDashboard extends StatefulWidget {
-  final User currentUser;
+  final dynamic currentUser;
 
-  const ParentDashboard({super.key, required this.currentUser});
+  const ParentDashboard({Key? key, required this.currentUser}) : super(key: key);
 
   @override
   State<ParentDashboard> createState() => _ParentDashboardState();
@@ -24,660 +23,1185 @@ class ParentDashboard extends StatefulWidget {
 
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
-
-  // Backend data
+  final ParentService _parentService = ParentService();
   Map<String, dynamic> _stats = {};
-  List<Course> _courses = [];
-  List<AppNotification> _notifications = [];
-  bool _loading = true;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchDashboardData();
+    _loadStats();
   }
 
-  Future<void> _fetchDashboardData() async {
+  Future<void> _loadStats() async {
+    setState(() => _isLoading = true);
     try {
-      final eleveService = EleveService();
-      final enseignantService = EnseignantService();
-
-      // Récupérer stats élèves et enseignants
-     final eleves = await EleveService().getParentEleves();
-      final enseignants = await enseignantService.getEnseignants();
-
-      final stats = {
-        'totalEleves': eleves.length,
-        'totalEnseignants': enseignants.length,
-        'totalCourses': 0, // à lier avec CourseService si dispo
-        'teacherAttendance': 0, // idem si API dispo
-        'monthlyRevenue': 0,
-        'pendingReschedules': 0,
-      };
-
+      final stats = await _parentService.getStats();
       setState(() {
         _stats = stats;
-        _courses = []; // quand tu auras CourseService
-        _notifications = []; // quand tu auras NotificationService
-        _loading = false;
+        _isLoading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
-      debugPrint('Erreur dashboard: $e');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  List<Widget> get _screens => [
+    _HomeTab(stats: _stats, isLoading: _isLoading, onRefresh: _loadStats),
+    AccountManagementScreen(),
+    const StatisticsPaymentsScreen(),
+    ScheduleScreen(),
+    const SeancesValidationScreen(),
+    const RapportsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.school, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'EduManager',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Espace Parent',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          PopupMenuButton(
+            icon: CircleAvatar(
+              radius: 16,
+              backgroundColor: theme.colorScheme.primary,
+              child: Text(
+                _getUserInitials(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            itemBuilder: (context) => <PopupMenuEntry>[
+              PopupMenuItem(
+                onTap: () {},
+                child: const Row(
+                  children: [
+                    Icon(Icons.person),
+                    SizedBox(width: 12),
+                    Text('Mon profil'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                onTap: () async {
+                  await AuthService().logout();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Déconnexion', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      drawer: _buildDrawer(context, theme),
+      body: _screens[_selectedIndex],
+    );
+  }
+
+  String _getUserInitials() {
+    if (widget.currentUser == null) return 'U';
+    final prenomNom = widget.currentUser['prenom_nom'] ?? '';
+    final nomFamille = widget.currentUser['nom_famille'] ?? '';
+    return '${prenomNom.isNotEmpty ? prenomNom[0] : ''}${nomFamille.isNotEmpty ? nomFamille[0] : ''}'.toUpperCase();
+  }
+
+  Widget _buildDrawer(BuildContext context, ThemeData theme) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    _getUserInitials(),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.currentUser['prenom_nom'] ?? 'Parent',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  widget.currentUser['courriel'] ?? '',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Navigation principale
+          ListTile(
+            leading: Icon(Icons.home, color: _selectedIndex == 0 ? theme.colorScheme.primary : null),
+            title: const Text('Accueil'),
+            selected: _selectedIndex == 0,
+            onTap: () {
+              setState(() => _selectedIndex = 0);
+              Navigator.pop(context);
+            },
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.people, color: _selectedIndex == 1 ? theme.colorScheme.primary : null),
+            title: const Text('Gestion des comptes'),
+            selected: _selectedIndex == 1,
+            onTap: () {
+              setState(() => _selectedIndex = 1);
+              Navigator.pop(context);
+            },
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.bar_chart, color: _selectedIndex == 2 ? theme.colorScheme.primary : null),
+            title: const Text('Statistiques'),
+            selected: _selectedIndex == 2,
+            onTap: () {
+              setState(() => _selectedIndex = 2);
+              Navigator.pop(context);
+            },
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.calendar_today, color: _selectedIndex == 3 ? theme.colorScheme.primary : null),
+            title: const Text('Planning'),
+            selected: _selectedIndex == 3,
+            onTap: () {
+              setState(() => _selectedIndex = 3);
+              Navigator.pop(context);
+            },
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.check_circle, color: _selectedIndex == 4 ? theme.colorScheme.primary : null),
+            title: const Text('Validations'),
+            selected: _selectedIndex == 4,
+            onTap: () {
+              setState(() => _selectedIndex = 4);
+              Navigator.pop(context);
+            },
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.description, color: _selectedIndex == 5 ? theme.colorScheme.primary : null),
+            title: const Text('Rapports'),
+            selected: _selectedIndex == 5,
+            onTap: () {
+              setState(() => _selectedIndex = 5);
+              Navigator.pop(context);
+            },
+          ),
+          
+          const Divider(),
+          
+          // Section Création de comptes
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'CRÉER UN COMPTE',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          
+          ListTile(
+            leading: const Icon(Icons.school, color: Colors.blue),
+            title: const Text('Ajouter un élève'),
+            onTap: () {
+              Navigator.pop(context);
+              _showCreateEleveDialog();
+            },
+          ),
+          
+          ListTile(
+            leading: const Icon(Icons.person, color: Colors.green),
+            title: const Text('Ajouter un enseignant'),
+            onTap: () {
+              Navigator.pop(context);
+              _showCreateEnseignantDialog();
+            },
+          ),
+          
+          ListTile(
+            leading: const Icon(Icons.visibility, color: Colors.orange),
+            title: const Text('Ajouter un témoin'),
+            onTap: () {
+              Navigator.pop(context);
+              _showCreateTemoinDialog();
+            },
+          ),
+          
+          const Divider(),
+          
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
+            onTap: () async {
+              await AuthService().logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateEleveDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => _CreateEleveDialog(),
+    );
+  }
+
+  void _showCreateEnseignantDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => _CreateEnseignantDialog(),
+    );
+  }
+
+  void _showCreateTemoinDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => _CreateTemoinDialog(),
+    );
+  }
+}
+
+// Dialog pour créer un élève
+class _CreateEleveDialog extends StatefulWidget {
+  @override
+  State<_CreateEleveDialog> createState() => _CreateEleveDialogState();
+}
+
+class _CreateEleveDialogState extends State<_CreateEleveDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _prenomNomController = TextEditingController();
+  final _nomFamilleController = TextEditingController();
+  final _courrielController = TextEditingController();
+  final _telephoneController = TextEditingController();
+  int _niveau = 1;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _prenomNomController.dispose();
+    _nomFamilleController.dispose();
+    _courrielController.dispose();
+    _telephoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createEleve() async {
+    if (!_formKey.currentState!.validate()) {
+      print('❌ Validation du formulaire élève échouée');
+      return;
+    }
+
+    print('📝 Début de la création d\'un élève...');
+    setState(() => _isLoading = true);
+    
+    try {
+      final data = {
+        'prenom': _prenomNomController.text,
+        'nom_famille': _nomFamilleController.text,
+        'courriel': _courrielController.text,
+        'telephone': _telephoneController.text,
+        'niveau_id': _niveau,
+      };
+      
+      print('📤 Envoi des données élève: $data');
+      
+      final result = await EleveService().createEleve(data);
+      
+      print('✅ Élève créé avec succès: $result');
+
+      if (mounted) {
+        Navigator.pop(context);
+        
+        // Afficher le mot de passe généré
+        final password = result['password'] ?? 'password';
+        final email = result['email'] ?? _courrielController.text;
+        print('🔑 Mot de passe généré: $password');
+        print('📧 Email: $email');
+        
+        // Afficher un dialog avec les informations de connexion
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 32),
+                SizedBox(width: 12),
+                Text('Élève créé !'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'L\'élève a été créé avec succès.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text('Informations de connexion:'),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.email, size: 16, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.lock, size: 16, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              password,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (result['email_sent'] == true)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '✅ Email envoyé avec succès !',
+                            style: TextStyle(color: Colors.green, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '⚠️ Email non envoyé. Notez ce mot de passe !',
+                            style: TextStyle(color: Colors.orange, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ ERREUR lors de la création de l\'élève:');
+      print('   Message: $e');
+      print('   Stack trace: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la création:\n$e'),
+            duration: const Duration(seconds: 7),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      print('🏁 Fin de la création d\'élève');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      _DashboardHome(
-        currentUser: widget.currentUser,
-        stats: _stats,
-        courses: _courses,
-        notifications: _notifications,
-        loading: _loading,
-      ),
-      const AccountManagementScreen(),
-      const StatisticsPaymentsScreen(),
-      const ReschedulingScreen(),
-      const SettingsScreen(),
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'EduManager',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+    return AlertDialog(
+      title: const Text('Créer un élève'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _prenomNomController,
+                decoration: const InputDecoration(
+                  labelText: 'Prénom et nom',
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
               ),
-        ),
-        elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => _showNotifications(context),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nomFamilleController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom de famille',
+                  prefixIcon: Icon(Icons.family_restroom),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _courrielController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _telephoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                value: _niveau,
+                decoration: const InputDecoration(
+                  labelText: 'Niveau',
+                  prefixIcon: Icon(Icons.school),
+                ),
+                items: List.generate(12, (i) => i + 1)
+                    .map((n) => DropdownMenuItem(value: n, child: Text('Niveau $n')))
+                    .toList(),
+                onChanged: (value) => setState(() => _niveau = value!),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      drawer: _buildDrawer(context),
-      body: pages[_selectedIndex],
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _createEleve,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Créer'),
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildDrawer(BuildContext context) {
+// Dialog pour créer un enseignant
+class _CreateEnseignantDialog extends StatefulWidget {
+  @override
+  State<_CreateEnseignantDialog> createState() => _CreateEnseignantDialogState();
+}
+
+class _CreateEnseignantDialogState extends State<_CreateEnseignantDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _prenomNomController = TextEditingController();
+  final _nomFamilleController = TextEditingController();
+  final _courrielController = TextEditingController();
+  final _telephoneController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _prenomNomController.dispose();
+    _nomFamilleController.dispose();
+    _courrielController.dispose();
+    _telephoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createEnseignant() async {
+    if (!_formKey.currentState!.validate()) {
+      print('❌ Validation du formulaire enseignant échouée');
+      return;
+    }
+
+    print('📝 Début de la création d\'un enseignant...');
+    setState(() => _isLoading = true);
+    
+    try {
+      // Essayons différents formats pour trouver celui qui fonctionne
+      final data = {
+        'prenom_nom': _prenomNomController.text.trim(),
+        'nom_famille': _nomFamilleController.text.trim(),
+        'courriel': _courrielController.text.trim(),
+        'mode_paiement': 'Mensuel',  // Avec majuscule
+        'salaire': '0',
+      };
+      
+      // Ajouter le téléphone seulement s'il n'est pas vide
+      if (_telephoneController.text.trim().isNotEmpty) {
+        data['telephone'] = _telephoneController.text.trim();
+      }
+      
+      print('📤 Envoi des données enseignant (format 1): $data');
+      
+      try {
+        final result = await EnseignantService().createEnseignant(data, envoyerEmail: false);
+        print('✅ Enseignant créé avec succès: $result');
+        
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Enseignant créé avec succès!\nMot de passe par défaut: password'),
+              duration: const Duration(seconds: 5),
+              backgroundColor: Colors.green,
+              action: SnackBarAction(
+                label: 'OK',
+                textColor: Colors.white,
+                onPressed: () {},
+              ),
+            ),
+          );
+        }
+        return;
+      } catch (e1) {
+        print('⚠️ Format 1 échoué: $e1');
+        print('   Essai format 2 avec différentes valeurs de mode_paiement...');
+        
+        // Essayer différentes valeurs possibles pour mode_paiement
+        final modePaiementOptions = ['Mensuel', 'mensuel', 'MENSUEL', 'Horaire', 'horaire'];
+        
+        for (final modePaiement in modePaiementOptions) {
+          try {
+            final data2 = {
+              'prenom': _prenomNomController.text.trim(),
+              'nom_famille': _nomFamilleController.text.trim(),
+              'courriel': _courrielController.text.trim(),
+              'mode_paiement': modePaiement,
+              'salaire': 0,
+            };
+            
+            if (_telephoneController.text.trim().isNotEmpty) {
+              data2['telephone'] = _telephoneController.text.trim();
+            }
+            
+            print('📤 Essai avec mode_paiement="$modePaiement": $data2');
+            
+            final result = await EnseignantService().createEnseignant(data2, envoyerEmail: false);
+            
+            print('✅ Enseignant créé avec succès (mode_paiement="$modePaiement"): $result');
+
+            if (mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Enseignant créé avec succès!\nMode de paiement: $modePaiement\nMot de passe: password'),
+                  duration: const Duration(seconds: 5),
+                  backgroundColor: Colors.green,
+                  action: SnackBarAction(
+                    label: 'OK',
+                    textColor: Colors.white,
+                    onPressed: () {},
+                  ),
+                ),
+              );
+            }
+            return; // Succès, on sort de la fonction
+          } catch (e2) {
+            print('   ❌ mode_paiement="$modePaiement" échoué: $e2');
+            continue; // Essayer la prochaine valeur
+          }
+        }
+        
+        // Si aucune valeur n'a fonctionné, on lance l'erreur
+        throw Exception('Impossible de créer l\'enseignant. Aucune valeur de mode_paiement acceptée.');
+      }
+    } catch (e, stackTrace) {
+      print('❌ ERREUR lors de la création de l\'enseignant:');
+      print('   Message: $e');
+      print('   Stack trace: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la création:\n$e'),
+            duration: const Duration(seconds: 7),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      print('🏁 Fin de la création d\'enseignant');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Créer un enseignant'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _prenomNomController,
+                decoration: const InputDecoration(
+                  labelText: 'Prénom et nom',
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nomFamilleController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom de famille',
+                  prefixIcon: Icon(Icons.family_restroom),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _courrielController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _telephoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _createEnseignant,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Créer'),
+        ),
+      ],
+    );
+  }
+}
+
+// Dialog pour créer un témoin
+class _CreateTemoinDialog extends StatefulWidget {
+  @override
+  State<_CreateTemoinDialog> createState() => _CreateTemoinDialogState();
+}
+
+class _CreateTemoinDialogState extends State<_CreateTemoinDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _prenomNomController = TextEditingController();
+  final _nomFamilleController = TextEditingController();
+  final _courrielController = TextEditingController();
+  final _telephoneController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _prenomNomController.dispose();
+    _nomFamilleController.dispose();
+    _courrielController.dispose();
+    _telephoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createTemoin() async {
+    if (!_formKey.currentState!.validate()) {
+      print('❌ Validation du formulaire témoin échouée');
+      return;
+    }
+
+    print('📝 Début de la création d\'un témoin...');
+    setState(() => _isLoading = true);
+    
+    try {
+      final data = {
+        'prenom': _prenomNomController.text,
+        'nom': _nomFamilleController.text,
+        'courriel': _courrielController.text,
+        'telephone': _telephoneController.text,
+      };
+      
+      print('📤 Envoi des données témoin: $data');
+      
+      final result = await TemoinService().createTemoin(data);
+      
+      print('✅ Témoin créé avec succès: $result');
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Témoin créé avec succès!\nMot de passe par défaut: password'),
+            duration: Duration(seconds: 5),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ ERREUR lors de la création du témoin:');
+      print('   Message: $e');
+      print('   Stack trace: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la création:\n$e'),
+            duration: const Duration(seconds: 7),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      print('🏁 Fin de la création de témoin');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Créer un témoin'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _prenomNomController,
+                decoration: const InputDecoration(
+                  labelText: 'Prénom et nom',
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nomFamilleController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom de famille',
+                  prefixIcon: Icon(Icons.family_restroom),
+                ),
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _courrielController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => value?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _telephoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _createTemoin,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Créer'),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeTab extends StatelessWidget {
+  final Map<String, dynamic> stats;
+  final bool isLoading;
+  final VoidCallback onRefresh;
+
+  const _HomeTab({
+    required this.stats,
+    required this.isLoading,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Drawer(
-      child: Column(
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.secondary,
-                ],
-              ),
+          Text(
+            'Tableau de bord',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UserAvatar(
-                    user: widget.currentUser,
-                    size: 60,
-                    showStatus: true,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.currentUser.name,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    widget.currentUser.role.displayName,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Lomé', // on remplace city par une valeur par défaut
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _DrawerItem(
-                  icon: Icons.dashboard_outlined,
-                  title: 'Tableau de bord',
-                  isSelected: _selectedIndex == 0,
-                  onTap: () {
-                    setState(() => _selectedIndex = 0);
-                    Navigator.pop(context);
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.people_outline,
-                  title: 'Gestion des comptes',
-                  isSelected: _selectedIndex == 1,
-                  onTap: () {
-                    setState(() => _selectedIndex = 1);
-                    Navigator.pop(context);
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.analytics_outlined,
-                  title: 'Statistiques & Paiements',
-                  isSelected: _selectedIndex == 2,
-                  onTap: () {
-                    setState(() => _selectedIndex = 2);
-                    Navigator.pop(context);
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.schedule_outlined,
-                  title: 'Reprogrammation',
-                  isSelected: _selectedIndex == 3,
-                  onTap: () {
-                    setState(() => _selectedIndex = 3);
-                    Navigator.pop(context);
-                  },
-                ),
-                const Divider(),
-                _DrawerItem(
-                  icon: Icons.settings_outlined,
-                  title: 'Parametres',
-                  isSelected: _selectedIndex == 4,
-                  onTap: () {
-                    setState(() => _selectedIndex = 4);
-                    Navigator.pop(context);
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.help_outline,
-                  title: 'Aide',
-                  onTap: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          _DrawerItem(
-            icon: Icons.logout_outlined,
-            title: 'Déconnexion',
-            onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
           ),
           const SizedBox(height: 16),
+
+          // Statistiques principales
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: [
+              _buildStatCard(
+                'Enseignants',
+                '${stats['enseignants'] ?? 0}',
+                Icons.person,
+                Colors.blue,
+                theme,
+              ),
+              _buildStatCard(
+                'Élèves',
+                '${stats['eleves'] ?? 0}',
+                Icons.school,
+                Colors.green,
+                theme,
+              ),
+              _buildStatCard(
+                'Témoins',
+                '${stats['temoins'] ?? 0}',
+                Icons.visibility,
+                Colors.orange,
+                theme,
+              ),
+              _buildStatCard(
+                'Séances totales',
+                '${stats['seances'] ?? 0}',
+                Icons.calendar_today,
+                Colors.purple,
+                theme,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Statistiques des séances
+          Text(
+            'État des séances',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.2,
+            children: [
+              _buildStatCard(
+                'En attente',
+                '${stats['seances_en_attente'] ?? 0}',
+                Icons.pending,
+                Colors.orange,
+                theme,
+              ),
+              _buildStatCard(
+                'Confirmées',
+                '${stats['seances_confirmees'] ?? 0}',
+                Icons.thumb_up,
+                Colors.blue,
+                theme,
+              ),
+              _buildStatCard(
+                'Validées',
+                '${stats['seances_validees'] ?? 0}',
+                Icons.check_circle,
+                Colors.green,
+                theme,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Actions rapides
+          Text(
+            'Actions rapides',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          _buildQuickAction(
+            'Gérer les comptes',
+            'Élèves, enseignants, témoins',
+            Icons.people,
+            Colors.blue,
+            () {},
+          ),
+          const SizedBox(height: 8),
+          _buildQuickAction(
+            'Voir les rapports',
+            'Consulter les rapports de séances',
+            Icons.description,
+            Colors.green,
+            () {},
+          ),
+          const SizedBox(height: 8),
+          _buildQuickAction(
+            'Planning',
+            'Gérer l\'emploi du temps',
+            Icons.calendar_month,
+            Colors.orange,
+            () {},
+          ),
         ],
       ),
     );
   }
 
-  void _showNotifications(BuildContext context) {
-    final notifications = _notifications
-        .where((n) => n.userId == widget.currentUser.id || n.userId == null)
-        .toList();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => Column(
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    ThemeData theme,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Notifications',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = notifications[index];
-                  return _NotificationTile(notification: notification);
-                },
-              ),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
     );
   }
-}
 
-
-// Drawer Item
-class _DrawerItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _DrawerItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: isSelected ? theme.colorScheme.primaryContainer : null,
-      ),
+  Widget _buildQuickAction(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Card(
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.onSurface.withOpacity(0.6),
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(0.1),
+          child: Icon(icon, color: color),
         ),
-        title: Text(
-          title,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-}
-
-// Dashboard Home
-class _DashboardHome extends StatefulWidget {
-  final User currentUser;
-  final Map<String, dynamic> stats;
-  final List<Course> courses;
-  final List<AppNotification> notifications;
-  final bool loading;
-
-  const _DashboardHome({
-    required this.currentUser,
-    required this.stats,
-    required this.courses,
-    required this.notifications,
-    required this.loading,
-  });
-
-  @override
-  State<_DashboardHome> createState() => _DashboardHomeState();
-}
-
-class _DashboardHomeState extends State<_DashboardHome> {
-  DateTime _selectedDay = DateTime.now();
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    if (widget.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final stats = widget.stats;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Greeting
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.secondary,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bonjour, ${widget.currentUser.name}',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Bienvenue dans votre espace EduManager',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-
-          // Stats Cards
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.1,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              StatCard(
-                title: 'Cours ce mois',
-                value: '${stats['totalCourses'] ?? 0}',
-                icon: Icons.school,
-                iconColor: theme.colorScheme.primary,
-              ),
-              StatCard(
-                title: 'Présence profs',
-                value: '${stats['teacherAttendance'] ?? 0}%',
-                icon: Icons.check_circle,
-                iconColor: theme.colorScheme.secondary,
-              ),
-              StatCard(
-                title: 'En attente',
-                value: '${(stats['monthlyRevenue'] ?? 0).toString()} FCFA',
-                icon: Icons.payments,
-                iconColor: theme.colorScheme.tertiary,
-                subtitle: 'Paiements dus',
-              ),
-              StatCard(
-                title: 'À reprogrammer',
-                value: '${stats['pendingReschedules'] ?? 0}',
-                icon: Icons.schedule,
-                iconColor: Colors.orange,
-                subtitle: 'Cours en attente',
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-
-          // Calendar Section
-          Text(
-            'Calendrier des cours',
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          CustomCard(
-            child: TableCalendar<Course>(
-              firstDay: DateTime.utc(2024, 1, 1),
-              lastDay: DateTime.utc(2025, 12, 31),
-              focusedDay: _selectedDay,
-              calendarFormat: _calendarFormat,
-              eventLoader: (day) => widget.courses.where((course) => isSameDay(course.startTime, day)).toList(),
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              calendarStyle: CalendarStyle(
-                outsideDaysVisible: false,
-                todayDecoration: BoxDecoration(
-                  color: theme.colorScheme.tertiary,
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
-                ),
-                markerDecoration: BoxDecoration(
-                  color: theme.colorScheme.secondary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              headerStyle: HeaderStyle(
-                formatButtonVisible: true,
-                titleCentered: true,
-                formatButtonDecoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                formatButtonTextStyle: TextStyle(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() => _selectedDay = selectedDay);
-              },
-              onFormatChanged: (format) {
-                setState(() => _calendarFormat = format);
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Upcoming Courses
-          Text(
-            'Prochains cours',
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          ...widget.courses.where((c) => c.startTime.isAfter(DateTime.now())).take(3).map((course) => _CourseCard(course: course)),
-
-          const SizedBox(height: 24),
-
-          // Recent Notifications
-          Text(
-            'Notifications récentes',
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...widget.notifications.take(3).map((notification) => _NotificationTile(notification: notification)),
-        ],
-      ),
-    );
-  }
-}
-
-// CourseCard et NotificationTile restent les mêmes que précédemment
-
-
-// ---------- Course Card ----------
-class _CourseCard extends StatelessWidget {
-  final Course course;
-
-  const _CourseCard({required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 60,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course.subject,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${course.dayOfWeek} ${course.timeString}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${course.pricePerSession.toInt()} FCFA',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.tertiary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  course.status.displayName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------- Notification Tile ----------
-class _NotificationTile extends StatelessWidget {
-  final AppNotification notification;
-
-  const _NotificationTile({required this.notification});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      backgroundColor: notification.isRead
-          ? theme.cardColor
-          : theme.colorScheme.primaryContainer.withOpacity(0.3),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Color(int.parse(notification.type.color)).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                notification.type.icon,
-                style: const TextStyle(fontSize: 20),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  notification.message,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  notification.timeAgo,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!notification.isRead)
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-            ),
-        ],
       ),
     );
   }

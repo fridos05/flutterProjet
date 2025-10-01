@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/services/api.dart';
-import 'package:edumanager/models/user_model.dart';
+import 'dart:developer' as developer;
+import 'package:edumanager/services/auth_service.dart';
 import 'package:edumanager/screens/teacher/teacher_dashboard.dart';
-import 'package:edumanager/screens/student/student_dashboard.dart';
-import 'package:edumanager/screens/witness/witness_dashboard.dart';
-import 'package:edumanager/screens/admin/admin_dashboard.dart';
 import 'package:edumanager/screens/parent/parent_dashboard.dart';
+import 'package:edumanager/screens/temoin/temoin_dashboard.dart';
+import 'package:edumanager/screens/eleve/eleve_dashboard.dart';
+import 'package:edumanager/widgets/error_display.dart';
+import 'package:edumanager/screens/auth/registrer_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,367 +15,258 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  String _selectedRole = 'parent';
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _selectedRole = 'enseignant';
   bool _isLoading = false;
-  bool _obscurePassword = true;
+
+  final List<String> _roles = ['enseignant', 'eleve', 'temoin', 'parent'];
 
   @override
-  void initState() {
-    super.initState();
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.school,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Titre
+              Text(
+                'EduManager',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Connexion à votre compte',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              // Champ email
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrer votre email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Email invalide';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Champ mot de passe
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe',
+                  prefixIcon: Icon(Icons.lock),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrer votre mot de passe';
+                  }
+                  if (value.length < 6) {
+                    return 'Le mot de passe doit contenir au moins 6 caractères';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Sélection du rôle
+              DropdownButtonFormField<String>(
+                value: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Rôle',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+                items: _roles.map((role) {
+                  return DropdownMenuItem(
+                    value: role,
+                    child: Text(
+                      role == 'enseignant' ? 'Enseignant' :
+                      role == 'eleve' ? 'Élève' :
+                      role == 'temoin' ? 'Témoin' : 'Parent'
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedRole = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 24),
+              
+              // Bouton de connexion
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Se connecter'),
+                ),
+              ),
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-
-    _fadeController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _slideController.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) return 'L\'email est requis';
-    if (!value.contains('@')) return 'Format d\'email invalide';
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Le mot de passe est requis';
-    if (value.length < 3) return 'Le mot de passe doit contenir au moins 3 caractères';
-    return null;
-  }
-
-  void _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      try {
-        final authService = AuthService();
-        final response = await authService.login(
-          LoginRequest(
-            courriel: _emailController.text.trim(),
-            motDePasse: _passwordController.text,
-            role: _selectedRole,
+                const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                            );
+                          },
+                          child: const Text('Vous N\'avez pas de compte ? Inscrivez-vous'),
+                        ),
+                        const Spacer(),
+            ],
           ),
-        );
+        ),
+      ),
+    );
+  }
 
-        // ✅ Vérifie si l’API a bien renvoyé un rôle
-        final String roleFromApi = response.role;
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-        UserRole userRole;
-        switch (roleFromApi) {
-          case 'parent':
-            userRole = UserRole.parent;
-            break;
-          case 'eleve':
-            userRole = UserRole.student;
-            break;
-          case 'enseignant':
-            userRole = UserRole.teacher;
-            break;
-          case 'temoin':
-            userRole = UserRole.witness;
-            break;
-          case 'admin':
-            userRole = UserRole.admin;
-            break;
-          default:
-            throw Exception('Rôle non supporté: $roleFromApi');
-        }
+    setState(() => _isLoading = true);
 
-        _navigateToRole(userRole);
-      } catch (e) {
+    developer.log(
+      '🔐 Tentative de connexion',
+      name: 'LoginScreen',
+    );
+    developer.log(
+      'Email: ${_emailController.text}, Rôle: $_selectedRole',
+      name: 'LoginScreen',
+    );
+
+    try {
+      final authService = AuthService();
+      
+      // Appel au backend avec les 3 paramètres requis
+      final result = await authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _selectedRole,
+      );
+
+      developer.log(
+        '✅ Connexion réussie',
+        name: 'LoginScreen',
+      );
+      developer.log(
+        'Token: ${result['token'] != null ? "✓ Reçu" : "✗ Absent"}',
+        name: 'LoginScreen',
+      );
+      developer.log(
+        'User: ${result['user']}',
+        name: 'LoginScreen',
+      );
+
+      if (!mounted) return;
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text('Bienvenue ${result['user']?['prenom_nom'] ?? result['user']?['prenom'] ?? ""}!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Rediriger vers le dashboard approprié selon le rôle
+      Widget dashboard;
+      switch (_selectedRole) {
+        case 'enseignant':
+          dashboard = const TeacherDashboard();
+          break;
+        case 'parent':
+          dashboard = ParentDashboard(currentUser: result['user']);
+          break;
+        case 'eleve':
+          dashboard = const EleveDashboard();
+          break;
+        case 'temoin':
+          dashboard = const TemoinDashboard();
+          break;
+        default:
+          dashboard = ParentDashboard(currentUser: result['user']);
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => dashboard),
+      );
+    } catch (e) {
+      developer.log(
+        '❌ Erreur de connexion: $e',
+        name: 'LoginScreen',
+      );
+
+      if (!mounted) return;
+
+      // Afficher l'erreur avec le widget ErrorDisplay
+      context.showError(
+        e,
+        onRetry: _login,
+      );
+    } finally {
+      if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
-        );
       }
     }
   }
 
-  void _navigateToRole(UserRole role) {
-    Widget destination;
-    switch (role) {
-      case UserRole.parent:
-        destination = const ParentDashboard();
-        break;
-      case UserRole.teacher:
-        destination = const TeacherDashboard();
-        break;
-      case UserRole.student:
-        destination = const StudentDashboard();
-        break;
-      case UserRole.witness:
-        destination = const WitnessDashboard();
-        break;
-      case UserRole.admin:
-        destination = const AdminDashboard();
-        break;
-    }
-
-    Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => destination,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-      (route) => false,
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.secondary,
-              theme.colorScheme.tertiary.withOpacity(0.8),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.05),
-
-                    // Logo et titre
-                    Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(50),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.school_rounded,
-                              size: 50,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            'EduManager',
-                            style: theme.textTheme.displaySmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'L\'éducation à portée de main',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white.withOpacity(0.9),
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 48),
-
-                    // Formulaire de connexion
-                    Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 30,
-                            offset: const Offset(0, 15),
-                          ),
-                        ],
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Connexion',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 32),
-
-                            TextFormField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                labelText: 'Email *',
-                                prefixIcon: Icon(Icons.email_outlined, color: theme.colorScheme.primary),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
-                                ),
-                              ),
-                              validator: _validateEmail,
-                            ),
-                            const SizedBox(height: 20),
-
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              decoration: InputDecoration(
-                                labelText: 'Mot de passe *',
-                                prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.primary),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                    color: theme.colorScheme.primary.withOpacity(0.6),
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
-                                ),
-                              ),
-                              validator: _validatePassword,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Sélecteur de rôle
-                            DropdownButtonFormField<String>(
-                              value: _selectedRole,
-                              decoration: InputDecoration(
-                                labelText: 'Rôle *',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                                DropdownMenuItem(value: 'eleve', child: Text('Élève')),
-                                DropdownMenuItem(value: 'enseignant', child: Text('Enseignant')),
-                                DropdownMenuItem(value: 'temoin', child: Text('Témoin')),
-                                DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() => _selectedRole = value);
-                                }
-                              },
-                              validator: (value) => value == null ? 'Sélectionnez un rôle' : null,
-                            ),
-                            const SizedBox(height: 32),
-
-                            ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                                      ),
-                                    )
-                                  : Text(
-                                      'Se connecter',
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.05),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }

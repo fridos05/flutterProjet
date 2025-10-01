@@ -136,13 +136,13 @@ class _EditUserBottomSheetState extends State<EditUserBottomSheet> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    try {
+  /*   try {
       final prenom = _prenomController.text;
       final nom = _nomController.text;
       final email = _emailController.text;
       final phone = _phoneController.text;
 
-      switch (_selectedRole) {
+     switch (_selectedRole) {
         case UserRole.teacher:
           await EnseignantService().updateEnseignant(widget.user.id, {
             'prenom': prenom,
@@ -160,14 +160,14 @@ class _EditUserBottomSheetState extends State<EditUserBottomSheet> {
           });
           break;
 
-        case UserRole.witness:
+       /* case UserRole.witness:
           await TemoinService().updateTemoin(widget.user.id, {
             'prenom': prenom,
             'nom': nom, // ⚠️ témoin = "nom"
             'courriel': email,
             'telephone': phone,
           });
-          break;
+          break;*/
 
         case UserRole.parent:
 
@@ -184,7 +184,7 @@ class _EditUserBottomSheetState extends State<EditUserBottomSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erreur lors de la modification')),
       );
-    }
+    }*/
   }
 
   @override

@@ -3,10 +3,7 @@ import 'package:edumanager/screens/teacher/schedule_screen.dart';
 import 'package:edumanager/screens/teacher/students_screen.dart';
 import 'package:edumanager/screens/teacher/reports_screen.dart';
 import 'package:edumanager/screens/auth/login_screen.dart';
-import 'package:edumanager/data/sample_data.dart';
-import 'package:edumanager/models/user_model.dart';
-import 'package:edumanager/widgets/common/custom_card.dart';
-import 'package:edumanager/screens/teacher/teacherconnect.dart' hide LoginScreen;
+import 'package:edumanager/services/auth_service.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -17,10 +14,7 @@ class TeacherDashboard extends StatefulWidget {
 
 class _TeacherDashboardState extends State<TeacherDashboard> {
   int _selectedIndex = 0;
-  final Teacher _currentUser = SampleData.users
-      .where((u) => u.role == UserRole.teacher)
-      .cast<Teacher>()
-      .first;
+  Map<String, dynamic>? _userData;
 
   final List<_NavigationItem> _navigationItems = [
     _NavigationItem(Icons.calendar_month, 'Planning', 'Emploi du temps'),
@@ -28,6 +22,27 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     _NavigationItem(Icons.assessment, 'Rapports', 'Mes rapports'),
     _NavigationItem(Icons.message, 'Messages', 'Communication'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = AuthService();
+    final userData = await authService.getUserData();
+    setState(() {
+      _userData = userData;
+    });
+  }
+
+  String _getUserName() {
+    if (_userData != null) {
+      return _userData!['prenom_nom'] ?? 'Enseignant';
+    }
+    return 'Enseignant';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +79,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                 Text(
                   'Espace Enseignant',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -74,18 +89,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // Show notifications
-            },
-          ),
           PopupMenuButton(
             icon: CircleAvatar(
               radius: 16,
               backgroundColor: theme.colorScheme.primary,
               child: Text(
-                _currentUser.name.split(' ').map((n) => n[0]).take(2).join(),
+                _getUserName().split(' ').map((n) => n[0]).take(2).join(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -105,24 +114,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   },
                 ),
               ),
-              PopupMenuItem(
-                child: ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('Paramètres'),
-                  contentPadding: EdgeInsets.zero,
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to settings
-                  },
-                ),
-              ),
               const PopupMenuDivider(),
               PopupMenuItem(
                 child: ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
                   contentPadding: EdgeInsets.zero,
-                  onTap: () {
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final authService = AuthService();
+                    await authService.logout();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -141,7 +142,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           color: theme.colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+              color: theme.colorScheme.shadow.withOpacity(0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -171,15 +172,15 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
-        return ScheduleScreen(teacher: _currentUser);
+        return const ScheduleScreen();
       case 1:
-        return StudentsScreen(teacher: _currentUser);
+        return const StudentsScreen();
       case 2:
-        return ReportsScreen(teacher: _currentUser);
+        return const ReportsScreen();
       case 3:
-        return _MessagesScreen(teacher: _currentUser);
+        return _MessagesScreen();
       default:
-        return ScheduleScreen(teacher: _currentUser);
+        return const ScheduleScreen();
     }
   }
 
@@ -200,23 +201,20 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(8),
-              child: Icon(
-                item.icon,
-                size: 24,
-                color: isSelected 
-                  ? theme.colorScheme.primary 
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+            Icon(
+              item.icon,
+              size: 24,
+              color: isSelected 
+                ? theme.colorScheme.primary 
+                : theme.colorScheme.onSurface.withOpacity(0.6),
             ),
+            const SizedBox(height: 4),
             Text(
               item.label,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: isSelected 
                   ? theme.colorScheme.primary 
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  : theme.colorScheme.onSurface.withOpacity(0.6),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -236,244 +234,31 @@ class _NavigationItem {
 }
 
 class _MessagesScreen extends StatelessWidget {
-  final Teacher teacher;
-
-  const _MessagesScreen({required this.teacher});
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.message,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Messages',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Communication avec les parents',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.add_comment),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Quick Actions
-          Row(
-            children: [
-              Expanded(
-                child: CustomCard(
-                  onTap: () {},
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.group_add,
-                        color: theme.colorScheme.primary,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Nouveau message',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: CustomCard(
-                  onTap: () {},
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.report,
-                        color: theme.colorScheme.secondary,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Envoyer rapport',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Recent Messages
-          Text(
-            'Messages récents',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Icon(
+            Icons.message,
+            size: 64,
+            color: theme.colorScheme.onSurface.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
-          
-          // Sample messages
-          _MessageCard(
-            senderName: 'M. Kofi Mensah',
-            message: 'Bonjour Mme Akosua, comment se passe les cours de mathématiques avec Ama ?',
-            time: 'Il y a 2h',
-            isUnread: true,
-          ),
-          _MessageCard(
-            senderName: 'Administration',
-            message: 'Rappel: Les rapports de cours sont à remettre avant le 30 du mois.',
-            time: 'Il y a 1 jour',
-            isUnread: false,
-            isFromAdmin: true,
-          ),
-          _MessageCard(
-            senderName: 'M. Kofi Mensah',
-            message: 'Merci pour le rapport détaillé. Ama fait de très bons progrès !',
-            time: 'Il y a 3 jours',
-            isUnread: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MessageCard extends StatelessWidget {
-  final String senderName;
-  final String message;
-  final String time;
-  final bool isUnread;
-  final bool isFromAdmin;
-
-  const _MessageCard({
-    required this.senderName,
-    required this.message,
-    required this.time,
-    this.isUnread = false,
-    this.isFromAdmin = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      backgroundColor: isUnread 
-        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) 
-        : theme.cardColor,
-      onTap: () {
-        // Navigate to message details
-      },
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: isFromAdmin 
-              ? theme.colorScheme.tertiary 
-              : theme.colorScheme.primary,
-            child: Icon(
-              isFromAdmin ? Icons.admin_panel_settings : Icons.person,
-              color: Colors.white,
-              size: 20,
+          Text(
+            'Messages',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.5),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      senderName,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      time,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Text(
+            'Fonctionnalité en développement',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.4),
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            children: [
-              if (isUnread)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              const SizedBox(height: 8),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ],
           ),
         ],
       ),

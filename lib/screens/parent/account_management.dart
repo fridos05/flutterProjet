@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:edumanager/data/sample_data.dart';
-import 'package:edumanager/models/user_model.dart';
-import 'package:edumanager/widgets/common/custom_card.dart';
-import 'package:edumanager/widgets/common/user_avatar.dart';
+import 'package:edumanager/services/eleve_service.dart';
+import 'package:edumanager/services/enseignant_service.dart';
+import 'package:edumanager/services/temoin_service.dart';
+import 'package:edumanager/services/api_service.dart';
 
 class AccountManagementScreen extends StatefulWidget {
   const AccountManagementScreen({super.key});
@@ -12,837 +12,403 @@ class AccountManagementScreen extends StatefulWidget {
 }
 
 class _AccountManagementScreenState extends State<AccountManagementScreen> {
-  UserRole? _selectedFilter;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
+  int _selectedTab = 0;
+  final EleveService _eleveService = EleveService();
+  final EnseignantService _enseignantService = EnseignantService();
+  final TemoinService _temoinService = TemoinService();
+  final ApiService _apiService = ApiService();
 
-  List<User> get filteredUsers {
-    var users = SampleData.users.where((user) => user.role != UserRole.parent).toList();
-    
-    if (_selectedFilter != null) {
-      users = users.where((user) => user.role == _selectedFilter).toList();
-    }
-    
-    if (_searchQuery.isNotEmpty) {
-      users = users.where((user) => 
-        user.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
-    }
-    
-    return users;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Scaffold(
-      body: Column(
-        children: [
-          // Search and Filter Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher un utilisateur...',
-                    prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
-                    suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('Tous', null),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Enseignants', UserRole.teacher),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Élèves', UserRole.student),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Témoins', UserRole.witness),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Users List
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredUsers.length,
-              itemBuilder: (context, index) {
-                final user = filteredUsers[index];
-                return _UserManagementCard(
-                  user: user,
-                  onEdit: () => _editUser(user),
-                  onDelete: () => _deleteUser(user),
-                  onViewDetails: () => _viewUserDetails(user),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addNewUser,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Ajouter'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, UserRole? role) {
-    final theme = Theme.of(context);
-    final isSelected = _selectedFilter == role;
-    
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedFilter = selected ? role : null;
-        });
-      },
-      backgroundColor: theme.colorScheme.surface,
-      selectedColor: theme.colorScheme.primaryContainer,
-      labelStyle: TextStyle(
-        color: isSelected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      ),
-      side: BorderSide(
-        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withValues(alpha: 0.3),
-      ),
-    );
-  }
-
-  void _addNewUser() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _AddUserBottomSheet(),
-    );
-  }
-
-  void _editUser(User user) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => _EditUserBottomSheet(user: user),
-    );
-  }
-
-  void _deleteUser(User user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer l\'utilisateur'),
-        content: Text('Êtes-vous sûr de vouloir supprimer ${user.name} ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Handle delete
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${user.name} a été supprimé')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _viewUserDetails(User user) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => _UserDetailsScreen(user: user),
-      ),
-    );
-  }
-}
-
-class _UserManagementCard extends StatelessWidget {
-  final User user;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onViewDetails;
-
-  const _UserManagementCard({
-    required this.user,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onViewDetails,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return CustomCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              UserAvatar(
-                user: user,
-                size: 60,
-                showStatus: true,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.role.displayName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: _getRoleColor(user.role, theme),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      user.email,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    if (user.city != null)
-                      Text(
-                        user.city!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: user.isActive 
-                    ? theme.colorScheme.primaryContainer 
-                    : theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  user.isActive ? 'Actif' : 'Inactif',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: user.isActive 
-                      ? theme.colorScheme.onPrimaryContainer 
-                      : theme.colorScheme.onErrorContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onViewDetails,
-                  icon: const Icon(Icons.visibility, size: 14),
-                  label: const Text('Détails'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit, size: 10),
-                  label: const Text('Modifier'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.secondary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete, size: 10),
-                  label: const Text('Supprimer'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getRoleColor(UserRole role, ThemeData theme) {
-    switch (role) {
-      case UserRole.parent:
-        return theme.colorScheme.primary;
-      case UserRole.teacher:
-        return theme.colorScheme.secondary;
-      case UserRole.student:
-        return theme.colorScheme.tertiary;
-      case UserRole.witness:
-        return Colors.grey;
-      case UserRole.admin:
-        return Colors.purple;
-    }
-  }
-}
-
-class _AddUserBottomSheet extends StatefulWidget {
-  @override
-  State<_AddUserBottomSheet> createState() => _AddUserBottomSheetState();
-}
-
-class _AddUserBottomSheetState extends State<_AddUserBottomSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  UserRole _selectedRole = UserRole.teacher;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      maxChildSize: 0.9,
-      minChildSize: 0.5,
-      expand: false,
-      builder: (context, scrollController) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Ajouter un utilisateur',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom complet',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => value?.isEmpty == true ? 'Ce champ est requis' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => value?.isEmpty == true ? 'Ce champ est requis' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Téléphone',
-                        prefixIcon: Icon(Icons.phone),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<UserRole>(
-                      initialValue: _selectedRole,
-                      decoration: const InputDecoration(
-                        labelText: 'Rôle',
-                        prefixIcon: Icon(Icons.group),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [UserRole.teacher, UserRole.student, UserRole.witness]
-                          .map((role) => DropdownMenuItem(
-                                value: role,
-                                child: Text(role.displayName),
-                              ))
-                          .toList(),
-                      onChanged: (value) => setState(() => _selectedRole = value!),
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Annuler'),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                // Handle add user
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('${_nameController.text} a été ajouté')),
-                                );
-                              }
-                            },
-                            child: const Text('Ajouter'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-}
-
-class _EditUserBottomSheet extends StatefulWidget {
-  final User user;
-
-  const _EditUserBottomSheet({required this.user});
-
-  @override
-  State<_EditUserBottomSheet> createState() => _EditUserBottomSheetState();
-}
-
-class _EditUserBottomSheetState extends State<_EditUserBottomSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
+  List<dynamic> _eleves = [];
+  List<dynamic> _enseignants = [];
+  List<dynamic> _temoins = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.user.name);
-    _emailController = TextEditingController(text: widget.user.email);
-    _phoneController = TextEditingController(text: widget.user.phone ?? '');
+    _loadData();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      maxChildSize: 0.9,
-      minChildSize: 0.5,
-      expand: false,
-      builder: (context, scrollController) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Modifier l\'utilisateur',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom complet',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => value?.isEmpty == true ? 'Ce champ est requis' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => value?.isEmpty == true ? 'Ce champ est requis' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Téléphone',
-                        prefixIcon: Icon(Icons.phone),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Annuler'),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                // Handle update user
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('${_nameController.text} a été modifié')),
-                                );
-                              }
-                            },
-                            child: const Text('Modifier'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final eleves = await _eleveService.getParentEleves();
+      final enseignants = await _enseignantService.getEnseignants();
+      final temoins = await _temoinService.getTemoins();
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-}
-
-class _UserDetailsScreen extends StatelessWidget {
-  final User user;
-
-  const _UserDetailsScreen({required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(user.name),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Profile Header
-            CustomCard(
-              child: Column(
-                children: [
-                  UserAvatar(user: user, size: 80, showStatus: true),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    user.role.displayName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: _getRoleColor(user.role, theme),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: user.isActive 
-                        ? theme.colorScheme.primaryContainer 
-                        : theme.colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      user.isActive ? 'Compte actif' : 'Compte inactif',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: user.isActive 
-                          ? theme.colorScheme.onPrimaryContainer 
-                          : theme.colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Contact Information
-            CustomCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Informations de contact',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _InfoRow(Icons.email, 'Email', user.email),
-                  if (user.phone != null) _InfoRow(Icons.phone, 'Téléphone', user.phone!),
-                  if (user.address != null) _InfoRow(Icons.location_on, 'Adresse', user.address!),
-                  if (user.city != null) _InfoRow(Icons.location_city, 'Ville', user.city!),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Additional Information
-            if (user is Teacher) _TeacherInfo(teacher: user as Teacher),
-            if (user is Student) _StudentInfo(student: user as Student),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getRoleColor(UserRole role, ThemeData theme) {
-    switch (role) {
-      case UserRole.parent:
-        return theme.colorScheme.primary;
-      case UserRole.teacher:
-        return theme.colorScheme.secondary;
-      case UserRole.student:
-        return theme.colorScheme.tertiary;
-      case UserRole.witness:
-        return Colors.grey;
-      case UserRole.admin:
-        return Colors.purple;
+      setState(() {
+        _eleves = eleves;
+        _enseignants = enseignants;
+        _temoins = temoins;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
     }
   }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow(this.icon, this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Gestion des comptes'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Actualiser',
+            ),
+          ],
+          bottom: TabBar(
+            onTap: (index) => setState(() => _selectedTab = index),
+            tabs: const [
+              Tab(text: 'Élèves', icon: Icon(Icons.school)),
+              Tab(text: 'Enseignants', icon: Icon(Icons.person)),
+              Tab(text: 'Témoins', icon: Icon(Icons.visibility)),
+            ],
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: _buildTabContent(),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
+    switch (_selectedTab) {
+      case 0:
+        return _buildList(_eleves, 'élève');
+      case 1:
+        return _buildList(_enseignants, 'enseignant');
+      case 2:
+        return _buildList(_temoins, 'témoin');
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildList(List<dynamic> items, String type) {
+    print('📋 Affichage de ${items.length} $type(s)');
     
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Aucun $type',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tirez vers le bas pour actualiser',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        
+        // Extraire les données selon le type
+        final data = _extractData(item, type);
+        
+        print('📄 Item $index ($type): ${data['nom']}');
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getColorByType(type),
+              child: Text(
+                _getInitials(data),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            title: Text(
+              data['nom'] ?? 'Sans nom',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                Text(data['email'] ?? 'Pas d\'email'),
+                if (data['telephone'] != null)
+                  Text(
+                    '📞 ${data['telephone']}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
-                ),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+              ],
+            ),
+            trailing: type == 'enseignant'
+                ? ElevatedButton.icon(
+                    onPressed: () => _showAssociationDialog(item),
+                    icon: const Icon(Icons.link, size: 16),
+                    label: const Text('Associer'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  )
+                : Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey[400],
                   ),
+            onTap: type != 'enseignant'
+                ? () => _showDetails(data, type)
+                : null,
+          ),
+        );
+      },
+    );
+  }
+
+  Map<String, dynamic> _extractData(dynamic item, String type) {
+    // Les données peuvent être dans différents formats selon le backend
+    if (item is Map<String, dynamic>) {
+      // Si c'est une association parent-élève/enseignant/témoin
+      if (item.containsKey('eleve')) {
+        final eleve = item['eleve'];
+        return {
+          'nom': '${eleve['prenom'] ?? ''} ${eleve['nom_famille'] ?? ''}'.trim(),
+          'email': eleve['courriel'],
+          'telephone': eleve['telephone'],
+          'niveau': eleve['niveau_id'],
+        };
+      } else if (item.containsKey('enseignant') && item['enseignant'] != null) {
+        final ens = item['enseignant'];
+        return {
+          'nom': '${ens['prenom'] ?? ''} ${ens['nom_famille'] ?? ''}'.trim(),
+          'email': ens['courriel'] ?? '',
+          'telephone': ens['telephone'] ?? '',
+        };
+      } else if (item.containsKey('temoin') && item['temoin'] != null) {
+        final tem = item['temoin'];
+        return {
+          'nom': '${tem['prenom'] ?? ''} ${tem['nom'] ?? ''}'.trim(),
+          'email': tem['courriel'] ?? '',
+          'telephone': tem['telephone'] ?? '',
+        };
+      } else {
+        // Format direct
+        return {
+          'nom': item['prenom_nom'] ?? 
+                 '${item['prenom'] ?? ''} ${item['nom_famille'] ?? item['nom'] ?? ''}'.trim(),
+          'email': item['courriel'] ?? item['email'],
+          'telephone': item['telephone'],
+          'niveau': item['niveau_id'] ?? item['niveau'],
+        };
+      }
+    }
+    return {'nom': 'Inconnu', 'email': '', 'telephone': null};
+  }
+
+  Color _getColorByType(String type) {
+    switch (type) {
+      case 'élève':
+        return Colors.blue;
+      case 'enseignant':
+        return Colors.green;
+      case 'témoin':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getInitials(dynamic item) {
+    final name = item['prenom_nom'] ?? item['nom'] ?? '';
+    if (name.isEmpty) return '?';
+    final parts = name.split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  void _showDetails(dynamic item, String type) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(item['prenom_nom'] ?? item['nom'] ?? 'Détails'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Type', type),
+            _buildDetailRow('Email', item['courriel'] ?? item['email'] ?? '-'),
+            if (item['telephone'] != null)
+              _buildDetailRow('Téléphone', item['telephone']),
+            if (item['niveau'] != null)
+              _buildDetailRow('Niveau', item['niveau'].toString()),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Dialog pour associer élèves et témoin à un enseignant
+  Future<void> _showAssociationDialog(dynamic enseignant) async {
+    final enseignantData = enseignant['enseignant'] ?? enseignant;
+    final enseignantId = enseignantData['id'];
+    final enseignantNom = '${enseignantData['prenom']} ${enseignantData['nom_famille']}';
+
+    // Sélections multiples
+    List<int> selectedEleves = [];
+    int? selectedTemoin;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Associer à $enseignantNom'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sélectionnez les élèves',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
+                const SizedBox(height: 12),
+                ..._eleves.map((eleve) {
+                  final eleveData = eleve['eleve'] ?? eleve;
+                  final eleveId = eleveData['id'];
+                  final eleveNom = '${eleveData['prenom']} ${eleveData['nom_famille']}';
+                  
+                  return CheckboxListTile(
+                    title: Text(eleveNom),
+                    value: selectedEleves.contains(eleveId),
+                    onChanged: (bool? value) {
+                      setDialogState(() {
+                        if (value == true) {
+                          selectedEleves.add(eleveId);
+                        } else {
+                          selectedEleves.remove(eleveId);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+                const Divider(height: 32),
+                const Text(
+                  'Sélectionnez un témoin (optionnel)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                ..._temoins.map((temoin) {
+                  final temoinData = temoin['temoin'] ?? temoin;
+                  final temoinId = temoinData['id'];
+                  final temoinNom = '${temoinData['prenom']} ${temoinData['nom']}';
+                  
+                  return RadioListTile<int>(
+                    title: Text(temoinNom),
+                    value: temoinId,
+                    groupValue: selectedTemoin,
+                    onChanged: (int? value) {
+                      setDialogState(() {
+                        selectedTemoin = value;
+                      });
+                    },
+                  );
+                }).toList(),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeacherInfo extends StatelessWidget {
-  final Teacher teacher;
-
-  const _TeacherInfo({required this.teacher});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return CustomCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Informations professionnelles',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
             ),
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(Icons.school, 'Qualification', teacher.qualification),
-          _InfoRow(Icons.work, 'Expérience', '${teacher.experience} ans'),
-          _InfoRow(Icons.payments, 'Tarif horaire', '${teacher.hourlyRate.toInt()} FCFA/h'),
-          _InfoRow(Icons.subject, 'Matières', teacher.subjects.join(', ')),
-        ],
-      ),
-    );
-  }
-}
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedEleves.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Veuillez sélectionner au moins un élève')),
+                  );
+                  return;
+                }
 
-class _StudentInfo extends StatelessWidget {
-  final Student student;
+                try {
+                  // Appel API pour créer l'association
+                  final response = await _apiService.post('/api/associations', {
+                    'enseignant_id': enseignantId,
+                    'eleves': selectedEleves,
+                    'temoin_id': selectedTemoin,
+                  });
 
-  const _StudentInfo({required this.student});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return CustomCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Informations scolaires',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+                  if (response.statusCode == 200 || response.statusCode == 201) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Association créée avec succès !'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    _loadData(); // Recharger les données
+                  } else {
+                    throw Exception('Erreur lors de l\'association');
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: $e')),
+                  );
+                }
+              },
+              child: const Text('Associer'),
             ),
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(Icons.cake, 'Âge', '${student.age} ans'),
-          _InfoRow(Icons.class_, 'Classe', student.grade),
-          _InfoRow(Icons.school, 'École', student.school),
-          _InfoRow(Icons.subject, 'Matières', student.subjects.join(', ')),
-        ],
+          ],
+        ),
       ),
     );
   }
