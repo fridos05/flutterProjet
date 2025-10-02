@@ -138,34 +138,69 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       ),
       body: _buildBody(),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.shadow.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: _navigationItems.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                final isSelected = index == _selectedIndex;
-                
-                return _buildNavItem(item, isSelected, () {
-                  setState(() => _selectedIndex = index);
-                });
-              }).toList(),
-            ),
-          ),
-        ),
+  decoration: BoxDecoration(
+    color: theme.colorScheme.surface,
+    boxShadow: [
+      BoxShadow(
+        color: theme.colorScheme.shadow.withOpacity(0.1),
+        blurRadius: 8,
+        offset: const Offset(0, -2),
       ),
+    ],
+  ),
+  child: SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: _navigationItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          final isSelected = index == _selectedIndex;
+
+          return Expanded( // chaque item prend une largeur égale
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedIndex = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 8), // plus de padding horizontal
+                decoration: BoxDecoration(
+                  color: isSelected 
+                    ? theme.colorScheme.primaryContainer 
+                    : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 24,
+                      color: isSelected 
+                        ? theme.colorScheme.primary 
+                        : theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isSelected 
+                          ? theme.colorScheme.primary 
+                          : theme.colorScheme.onSurface.withOpacity(0.6),
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  ),
+),
+
     );
   }
 

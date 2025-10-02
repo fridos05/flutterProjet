@@ -998,6 +998,7 @@ class _CreateTemoinDialogState extends State<_CreateTemoinDialog> {
   }
 }
 
+
 class _HomeTab extends StatelessWidget {
   final Map<String, dynamic> stats;
   final bool isLoading;
@@ -1007,11 +1008,23 @@ class _HomeTab extends StatelessWidget {
     required this.stats,
     required this.isLoading,
     required this.onRefresh,
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Détermine le nombre de colonnes en fonction de la largeur
+    int calculateCrossAxisCount(double width) {
+      if (width >= 900) return 4;
+      if (width >= 600) return 3;
+      return 2; // mobile
+    }
+
+    final mainStatsCrossAxis = calculateCrossAxisCount(screenWidth);
+    final sessionStatsCrossAxis = calculateCrossAxisCount(screenWidth);
 
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -1022,6 +1035,7 @@ class _HomeTab extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Titre
           Text(
             'Tableau de bord',
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -1031,45 +1045,48 @@ class _HomeTab extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Statistiques principales
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.5,
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Enseignants',
                 '${stats['enseignants'] ?? 0}',
                 Icons.person,
                 Colors.blue,
                 theme,
+                mainStatsCrossAxis,
               ),
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Élèves',
                 '${stats['eleves'] ?? 0}',
                 Icons.school,
                 Colors.green,
                 theme,
+                mainStatsCrossAxis,
               ),
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Témoins',
                 '${stats['temoins'] ?? 0}',
                 Icons.visibility,
                 Colors.orange,
                 theme,
+                mainStatsCrossAxis,
               ),
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Séances totales',
                 '${stats['seances'] ?? 0}',
                 Icons.calendar_today,
                 Colors.purple,
                 theme,
+                mainStatsCrossAxis,
               ),
             ],
           ),
-
           const SizedBox(height: 24),
 
           // Statistiques des séances
@@ -1080,93 +1097,84 @@ class _HomeTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.2,
+
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'En attente',
                 '${stats['seances_en_attente'] ?? 0}',
                 Icons.pending,
                 Colors.orange,
                 theme,
+                sessionStatsCrossAxis,
               ),
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Confirmées',
                 '${stats['seances_confirmees'] ?? 0}',
                 Icons.thumb_up,
                 Colors.blue,
                 theme,
+                sessionStatsCrossAxis,
               ),
-              _buildStatCard(
+              _buildResponsiveStatCard(
+                context,
                 'Validées',
                 '${stats['seances_validees'] ?? 0}',
                 Icons.check_circle,
                 Colors.green,
                 theme,
+                sessionStatsCrossAxis,
               ),
             ],
-          ),    
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(
-    String label,
+  Widget _buildResponsiveStatCard(
+    BuildContext context, // <- context ajouté
+    String title,
     String value,
     IconData icon,
     Color color,
     ThemeData theme,
+    int columns,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = 16.0; // ListView padding
+    final spacing = 12.0; // Wrap spacing
+    final width = (screenWidth - padding * 2 - spacing * (columns - 1)) / columns;
 
-  Widget _buildQuickAction(
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: onTap,
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 28, color: color),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          Text(title, style: theme.textTheme.bodyMedium),
+        ],
       ),
     );
   }

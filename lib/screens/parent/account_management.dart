@@ -36,13 +36,21 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       final enseignants = await _enseignantService.getEnseignants();
       final temoins = await _temoinService.getTemoins();
 
+      // 🔎 Debug logs
+      debugPrint("== Données chargées ==");
+      debugPrint("Élèves: $eleves");
+      debugPrint("Enseignants: $enseignants");
+      debugPrint("Témoins: $temoins");
+
       setState(() {
         _eleves = eleves;
         _enseignants = enseignants;
         _temoins = temoins;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint("❌ Erreur lors du chargement: $e");
+      debugPrint("StackTrace: $stack");
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,6 +108,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
 
   Widget _buildList(List<dynamic> items, String type) {
     if (items.isEmpty) {
+      debugPrint("⚠️ Aucun $type trouvé.");
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -115,12 +124,16 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       );
     }
 
+    debugPrint("✅ ${items.length} $type(s) affiché(s).");
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
         final data = _extractData(item, type);
+
+        debugPrint("➡️ Item $index ($type): $data");
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -161,19 +174,34 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   }
 
   /// Extraction sécurisée des données
-  Map<String, dynamic> _extractData(dynamic item, String type) {
-    Map<String, dynamic> data = {};
+ Map<String, dynamic> _extractData(dynamic item, String type) {
+  Map<String, dynamic> data = {};
 
-    if (item is Map<String, dynamic>) {
-      final obj = item[type] ?? item;
-      data['nom'] = '${obj['prenom'] ?? ''} ${obj['nom_famille'] ?? obj['nom'] ?? ''}'.trim();
-      data['email'] = obj['courriel'] ?? obj['email'] ?? '-';
-      data['telephone'] = obj['telephone'];
-      data['niveau'] = obj['niveau_id'] ?? obj['niveau'];
+  if (item is Map<String, dynamic>) {
+    // 🔎 Vérification de la bonne clé (API = "eleve", "enseignant", "temoin")
+    dynamic obj;
+    if (type == "élève") {
+      obj = item["eleve"] ?? item;
+    } else if (type == "enseignant") {
+      obj = item["enseignant"] ?? item;
+    } else if (type == "témoin") {
+      obj = item["temoin"] ?? item;
+    } else {
+      obj = item;
     }
 
-    return data;
+    debugPrint("🟢 Extraction $type depuis: $obj");
+
+    data['nom'] = '${obj['prenom'] ?? ''} ${obj['nom_famille'] ?? obj['nom'] ?? ''}'.trim();
+    data['email'] = obj['courriel'] ?? obj['email'] ?? '-';
+    data['telephone'] = obj['telephone'];
+    data['niveau'] = obj['niveau_id'] ?? obj['niveau'];
   }
+
+  debugPrint("✅ Données extraites ($type): $data");
+  return data;
+}
+
 
   Color _getColorByType(String type) {
     switch (type) {
@@ -198,6 +226,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   }
 
   void _showDetails(Map<String, dynamic> data, String type) {
+    debugPrint("ℹ️ Détails $type: $data");
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -289,11 +319,18 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                   return;
                 }
                 try {
-                  final res = await _apiService.post('/api/associations', {
+                  final body = {
                     'enseignant_id': enseignantId,
                     'eleves': selectedEleves,
                     'temoin_id': selectedTemoin,
-                  });
+                  };
+
+                  debugPrint("📤 Envoi association: $body");
+
+                  final res = await _apiService.post('/api/associations', body);
+
+                  debugPrint("📥 Réponse serveur: ${res.statusCode} => ${res.body}");
+
                   if (res.statusCode == 200 || res.statusCode == 201) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -305,6 +342,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                     throw Exception('Erreur serveur');
                   }
                 } catch (e) {
+                  debugPrint("❌ Erreur association: $e");
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
                 }
               },

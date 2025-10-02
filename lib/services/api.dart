@@ -1,6 +1,6 @@
 // Configuration de base de l'API
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.137.80:8000'; // Adaptez selon votre environnement
+  static const String baseUrl = "192.168.137.80:8000"; // Adaptez selon votre environnement
   static const int timeoutSeconds = 30;
 }
 

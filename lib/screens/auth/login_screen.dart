@@ -25,15 +25,20 @@ class _LoginScreenState extends State<LoginScreen> {
   final List<String> _roles = ['enseignant', 'eleve', 'temoin', 'parent'];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
+Widget build(BuildContext context) {
+  return Scaffold(
+    resizeToAvoidBottomInset: true, // ✅ évite l’overflow quand le clavier apparaît
+    body: SafeArea(
+      child: SingleChildScrollView( // ✅ rend le contenu scrollable
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 40),
+
               // Logo
               Container(
                 width: 80,
@@ -49,23 +54,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Titre
               Text(
                 'EduManager',
+                textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
+
               Text(
                 'Connexion à votre compte',
+                textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
               ),
               const SizedBox(height: 32),
-              
+
               // Champ email
               TextFormField(
                 controller: _emailController,
@@ -85,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Champ mot de passe
               TextFormField(
                 controller: _passwordController,
@@ -106,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Sélection du rôle
               DropdownButtonFormField<String>(
                 value: _selectedRole,
@@ -119,9 +127,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   return DropdownMenuItem(
                     value: role,
                     child: Text(
-                      role == 'enseignant' ? 'Enseignant' :
-                      role == 'eleve' ? 'Élève' :
-                      role == 'temoin' ? 'Témoin' : 'Parent'
+                      role == 'enseignant'
+                          ? 'Enseignant'
+                          : role == 'eleve'
+                              ? 'Élève'
+                              : role == 'temoin'
+                                  ? 'Témoin'
+                                  : 'Parent',
                     ),
                   );
                 }).toList(),
@@ -132,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
+
               // Bouton de connexion
               SizedBox(
                 width: double.infinity,
@@ -147,24 +159,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('Se connecter'),
                 ),
               ),
+              const SizedBox(height: 16),
 
-                const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                            );
-                          },
-                          child: const Text('Vous N\'avez pas de compte ? Inscrivez-vous'),
-                        ),
-                        const Spacer(),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const RegisterScreen()),
+                  );
+                },
+                child: const Text(
+                  'Vous n’avez pas de compte ? Inscrivez-vous',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 40),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
