@@ -46,7 +46,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Erreur lors du chargement: $e')),
         );
       }
     }
@@ -99,8 +99,6 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   }
 
   Widget _buildList(List<dynamic> items, String type) {
-    print('📋 Affichage de ${items.length} $type(s)');
-    
     if (items.isEmpty) {
       return Center(
         child: Column(
@@ -108,15 +106,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
           children: [
             Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text(
-              'Aucun $type',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
+            Text('Aucun $type', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
             const SizedBox(height: 8),
-            Text(
-              'Tirez vers le bas pour actualiser',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
+            Text('Tirez vers le bas pour actualiser',
+                style: TextStyle(fontSize: 14, color: Colors.grey[500])),
           ],
         ),
       );
@@ -127,12 +120,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        
-        // Extraire les données selon le type
         final data = _extractData(item, type);
-        
-        print('📄 Item $index ($type): ${data['nom']}');
-        
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -140,11 +129,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
             leading: CircleAvatar(
               backgroundColor: _getColorByType(type),
               child: Text(
-                _getInitials(data),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                _getInitials(data['nom']),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
             title: Text(
@@ -156,10 +142,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               children: [
                 Text(data['email'] ?? 'Pas d\'email'),
                 if (data['telephone'] != null)
-                  Text(
-                    '📞 ${data['telephone']}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
+                  Text('📞 ${data['telephone']}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ],
             ),
             trailing: type == 'enseignant'
@@ -167,62 +151,28 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                     onPressed: () => _showAssociationDialog(item),
                     icon: const Icon(Icons.link, size: 16),
                     label: const Text('Associer'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
                   )
-                : Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey[400],
-                  ),
-            onTap: type != 'enseignant'
-                ? () => _showDetails(data, type)
-                : null,
+                : Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            onTap: type != 'enseignant' ? () => _showDetails(data, type) : null,
           ),
         );
       },
     );
   }
 
+  /// Extraction sécurisée des données
   Map<String, dynamic> _extractData(dynamic item, String type) {
-    // Les données peuvent être dans différents formats selon le backend
+    Map<String, dynamic> data = {};
+
     if (item is Map<String, dynamic>) {
-      // Si c'est une association parent-élève/enseignant/témoin
-      if (item.containsKey('eleve')) {
-        final eleve = item['eleve'];
-        return {
-          'nom': '${eleve['prenom'] ?? ''} ${eleve['nom_famille'] ?? ''}'.trim(),
-          'email': eleve['courriel'],
-          'telephone': eleve['telephone'],
-          'niveau': eleve['niveau_id'],
-        };
-      } else if (item.containsKey('enseignant') && item['enseignant'] != null) {
-        final ens = item['enseignant'];
-        return {
-          'nom': '${ens['prenom'] ?? ''} ${ens['nom_famille'] ?? ''}'.trim(),
-          'email': ens['courriel'] ?? '',
-          'telephone': ens['telephone'] ?? '',
-        };
-      } else if (item.containsKey('temoin') && item['temoin'] != null) {
-        final tem = item['temoin'];
-        return {
-          'nom': '${tem['prenom'] ?? ''} ${tem['nom'] ?? ''}'.trim(),
-          'email': tem['courriel'] ?? '',
-          'telephone': tem['telephone'] ?? '',
-        };
-      } else {
-        // Format direct
-        return {
-          'nom': item['prenom_nom'] ?? 
-                 '${item['prenom'] ?? ''} ${item['nom_famille'] ?? item['nom'] ?? ''}'.trim(),
-          'email': item['courriel'] ?? item['email'],
-          'telephone': item['telephone'],
-          'niveau': item['niveau_id'] ?? item['niveau'],
-        };
-      }
+      final obj = item[type] ?? item;
+      data['nom'] = '${obj['prenom'] ?? ''} ${obj['nom_famille'] ?? obj['nom'] ?? ''}'.trim();
+      data['email'] = obj['courriel'] ?? obj['email'] ?? '-';
+      data['telephone'] = obj['telephone'];
+      data['niveau'] = obj['niveau_id'] ?? obj['niveau'];
     }
-    return {'nom': 'Inconnu', 'email': '', 'telephone': null};
+
+    return data;
   }
 
   Color _getColorByType(String type) {
@@ -238,38 +188,32 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     }
   }
 
-  String _getInitials(dynamic item) {
-    final name = item['prenom_nom'] ?? item['nom'] ?? '';
-    if (name.isEmpty) return '?';
-    final parts = name.split(' ');
+  String _getInitials(String? name) {
+    if (name == null || name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name[0].toUpperCase();
+    return parts[0][0].toUpperCase();
   }
 
-  void _showDetails(dynamic item, String type) {
+  void _showDetails(Map<String, dynamic> data, String type) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(item['prenom_nom'] ?? item['nom'] ?? 'Détails'),
+        title: Text(data['nom'] ?? 'Détails'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDetailRow('Type', type),
-            _buildDetailRow('Email', item['courriel'] ?? item['email'] ?? '-'),
-            if (item['telephone'] != null)
-              _buildDetailRow('Téléphone', item['telephone']),
-            if (item['niveau'] != null)
-              _buildDetailRow('Niveau', item['niveau'].toString()),
+            _buildDetailRow('Email', data['email'] ?? '-'),
+            if (data['telephone'] != null) _buildDetailRow('Téléphone', data['telephone']),
+            if (data['niveau'] != null) _buildDetailRow('Niveau', data['niveau'].toString()),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
         ],
       ),
     );
@@ -279,30 +223,20 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
+          SizedBox(width: 100, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text(value)),
         ],
       ),
     );
   }
 
-  // Dialog pour associer élèves et témoin à un enseignant
+  /// Association enseignant ↔ élèves & témoin
   Future<void> _showAssociationDialog(dynamic enseignant) async {
-    final enseignantData = enseignant['enseignant'] ?? enseignant;
-    final enseignantId = enseignantData['id'];
-    final enseignantNom = '${enseignantData['prenom']} ${enseignantData['nom_famille']}';
+    final data = enseignant['enseignant'] ?? enseignant;
+    final enseignantId = data['id'];
+    final enseignantNom = '${data['prenom']} ${data['nom_famille']}';
 
-    // Sélections multiples
     List<int> selectedEleves = [];
     int? selectedTemoin;
 
@@ -313,96 +247,65 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
           title: Text('Associer à $enseignantNom'),
           content: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Sélectionnez les élèves',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
+                const Text('Sélectionnez les élèves', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
                 ..._eleves.map((eleve) {
                   final eleveData = eleve['eleve'] ?? eleve;
                   final eleveId = eleveData['id'];
                   final eleveNom = '${eleveData['prenom']} ${eleveData['nom_famille']}';
-                  
                   return CheckboxListTile(
                     title: Text(eleveNom),
                     value: selectedEleves.contains(eleveId),
-                    onChanged: (bool? value) {
+                    onChanged: (v) {
                       setDialogState(() {
-                        if (value == true) {
-                          selectedEleves.add(eleveId);
-                        } else {
-                          selectedEleves.remove(eleveId);
-                        }
+                        v == true ? selectedEleves.add(eleveId) : selectedEleves.remove(eleveId);
                       });
                     },
                   );
                 }).toList(),
-                const Divider(height: 32),
-                const Text(
-                  'Sélectionnez un témoin (optionnel)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
+                const Divider(),
+                const Text('Sélectionnez un témoin (optionnel)', style: TextStyle(fontWeight: FontWeight.bold)),
                 ..._temoins.map((temoin) {
-                  final temoinData = temoin['temoin'] ?? temoin;
-                  final temoinId = temoinData['id'];
-                  final temoinNom = '${temoinData['prenom']} ${temoinData['nom']}';
-                  
+                  final t = temoin['temoin'] ?? temoin;
                   return RadioListTile<int>(
-                    title: Text(temoinNom),
-                    value: temoinId,
+                    title: Text('${t['prenom']} ${t['nom']}'),
+                    value: t['id'],
                     groupValue: selectedTemoin,
-                    onChanged: (int? value) {
-                      setDialogState(() {
-                        selectedTemoin = value;
-                      });
-                    },
+                    onChanged: (v) => setDialogState(() => selectedTemoin = v),
                   );
                 }).toList(),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
             ElevatedButton(
               onPressed: () async {
                 if (selectedEleves.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Veuillez sélectionner au moins un élève')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Sélectionnez au moins un élève'),
+                  ));
                   return;
                 }
-
                 try {
-                  // Appel API pour créer l'association
-                  final response = await _apiService.post('/api/associations', {
+                  final res = await _apiService.post('/api/associations', {
                     'enseignant_id': enseignantId,
                     'eleves': selectedEleves,
                     'temoin_id': selectedTemoin,
                   });
-
-                  if (response.statusCode == 200 || response.statusCode == 201) {
+                  if (res.statusCode == 200 || res.statusCode == 201) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Association créée avec succès !'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                    _loadData(); // Recharger les données
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Association créée avec succès !'),
+                      backgroundColor: Colors.green,
+                    ));
+                    _loadData();
                   } else {
-                    throw Exception('Erreur lors de l\'association');
+                    throw Exception('Erreur serveur');
                   }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
                 }
               },
               child: const Text('Associer'),

@@ -1111,42 +1111,7 @@ class _HomeTab extends StatelessWidget {
                 theme,
               ),
             ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Actions rapides
-          Text(
-            'Actions rapides',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          _buildQuickAction(
-            'Gérer les comptes',
-            'Élèves, enseignants, témoins',
-            Icons.people,
-            Colors.blue,
-            () {},
-          ),
-          const SizedBox(height: 8),
-          _buildQuickAction(
-            'Voir les rapports',
-            'Consulter les rapports de séances',
-            Icons.description,
-            Colors.green,
-            () {},
-          ),
-          const SizedBox(height: 8),
-          _buildQuickAction(
-            'Planning',
-            'Gérer l\'emploi du temps',
-            Icons.calendar_month,
-            Colors.orange,
-            () {},
-          ),
+          ),    
         ],
       ),
     );
